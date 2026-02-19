@@ -8,7 +8,7 @@ apt install -y nodejs
 npm install -g pm2
 
 mkdir -p /var/www/logiwms
-chown ec2-user:ec2-user /var/www/logiwms
+chown ubuntu:ubuntu /var/www/logiwms
 
 systemctl enable nginx
 systemctl start nginx
