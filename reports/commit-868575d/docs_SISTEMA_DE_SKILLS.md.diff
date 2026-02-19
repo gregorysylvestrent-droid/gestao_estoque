@@ -1,0 +1,94 @@
+﻿diff --git a/docs/SISTEMA_DE_SKILLS.md b/docs/SISTEMA_DE_SKILLS.md
+new file mode 100644
+index 0000000..5b64871
+--- /dev/null
++++ b/docs/SISTEMA_DE_SKILLS.md
+@@ -0,0 +1,88 @@
++# Sistema Inteligente de Otimização de Skills (LogiWMS)
++
++Este documento descreve a arquitetura e funcionamento do **Skill Orchestrator**, um sistema desenvolvido para analisar, catalogar e recomendar habilidades (Skills) automaticamente para o Agente de Desenvolvimento.
++
++## 1. Visão Geral
++
++O sistema visa aumentar a precisão e eficiência das respostas do Agente, garantindo que as ferramentas corretas sejam utilizadas para cada tarefa. Ele funciona como um motor de busca semântico local, indexando as capacidades disponíveis no projeto.
++
++### Objetivos
++- **Automação**: Seleção automática de skills baseada em contexto.
++- **Aprendizado**: Melhoria contínua baseada no sucesso/falha das recomendações.
++- **Padronização**: Centralização das definições de skills.
++
++## 2. Arquitetura
++
++O sistema é composto por três componentes principais:
++
++1.  **Gerenciador (Engine)**: `scripts/skill_manager.js`
++    - Script Node.js responsável por toda a lógica.
++    - Executa scan, matching e gravação de métricas.
++2.  **Banco de Dados**: `.agent/data/`
++    - `skills_catalog.json`: Metadados indexados de todas as skills.
++    - `skills_metrics.json`: Histórico de uso e taxas de sucesso.
++3.  **Interface do Agente**: `.agent/skills/skill_orchestrator/`
++    - Uma "Meta-Skill" que ensina o Agente a usar o Gerenciador.
++
++## 3. Algoritmo de Matching
++
++O algoritmo de seleção utiliza uma abordagem híbrida de Processamento de Linguagem Natural (NLP) e Heurística de Desempenho.
++
++### Fórmula de Pontuação
++```javascript
++Score = (BaseScore * BoostFactor)
++
++Onde:
++BaseScore = (KeywordsMatched + (PartialMatches * 0.5)) / TotalQueryTokens
++BoostFactor = 1 + (SuccessRate * 0.5) + (log10(Uses + 1) * 0.1)
++```
++
++- **BaseScore**: Mede a relevância semântica (o quanto a skill "fala" sobre o que o usuário pediu).
++- **BoostFactor**: Recompensa skills que são usadas frequentemente e com sucesso (Aprendizado por Reforço).
++
++## 4. Métricas e Aprendizado Contínuo
++
++O sistema mantém um registro de desempenho em `skills_metrics.json`.
++
++| Métrica | Descrição | Impacto |
++|---------|-----------|---------|
++| `uses` | Quantas vezes a skill foi recomendada/usada. | Aumenta levemente a relevância (popularidade). |
++| `successes` | Quantas vezes o resultado foi positivo. | Aumenta significativamente o peso da skill. |
++
++Para alimentar o sistema, o Agente deve executar o comando de feedback ao final das tarefas:
++```bash
++node scripts/skill_manager.js feedback <skill_name> true
++```
++
++## 5. Como Adicionar Novas Skills
++
++O sistema é dinâmico. Para adicionar uma nova habilidade:
++
++1.  Crie uma pasta em `.agent/skills/<nome_da_skill>/`.
++2.  Adicione um arquivo `SKILL.md` com o frontmatter obrigatório:
++    ```markdown
++    ---
++    name: nome_unico
++    description: Descrição curta com palavras-chave fortes e gatilhos de uso.
++    ---
++    ```
++3.  Execute o scan para atualizar o catálogo:
++    ```bash
++    node scripts/skill_manager.js scan
++    ```
++
++## 6. Guia de Uso
++
++### Para Desenvolvedores (CLI)
++Você pode testar o matching manualmente no terminal:
++
++```bash
++# Buscar skill para autenticação
++node scripts/skill_manager.js match "implementar login seguro"
++
++# Ver catálogo
++cat .agent/data/skills_catalog.json
++```
++
++### Para o Agente (Automático)
++O Agente invocará a skill `skill_orchestrator` sempre que detectar uma tarefa complexa, delegando a escolha das ferramentas ao sistema.

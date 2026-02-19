@@ -1,0 +1,234 @@
+// LocalStorage API - Simula um backend usando localStorage
+// Perfeito para testes sem servidor!
+
+const STORAGE_KEYS = {
+  INVENTORY: 'logiwms_inventory',
+  REQUESTS: 'logiwms_requests',
+  VEHICLES: 'logiwms_vehicles',
+  WAREHOUSES: 'logiwms_warehouses',
+  USERS: 'logiwms_users',
+  MOVEMENTS: 'logiwms_movements',
+  PURCHASE_ORDERS: 'logiwms_purchase_orders',
+  NOTIFICATIONS: 'logiwms_notifications',
+  ACTIVITIES: 'logiwms_activities',
+  BATCHES: 'logiwms_batches',
+};
+
+// Dados mock iniciais
+const INITIAL_DATA = {
+  [STORAGE_KEYS.WAREHOUSES]: [
+    { id: 'ARMZ28', name: 'CD Manaus', description: 'Centro de Distribuição Manaus', location: 'Manaus - AM', isActive: true, managerName: 'João Silva', managerEmail: 'joao@logiwms.com' },
+    { id: 'ARMZ33', name: 'CD São Paulo', description: 'Centro de Distribuição São Paulo', location: 'São Paulo - SP', isActive: true, managerName: 'Maria Santos', managerEmail: 'maria@logiwms.com' }
+  ],
+  [STORAGE_KEYS.INVENTORY]: [
+    { sku: 'SKU-000028', name: 'Item Teste 28', location: 'A-01-01', batch: 'B001', expiry: '2026-12-31', quantity: 50, status: 'disponivel', image_url: '', category: 'Teste', unit: 'UN', min_qty: 10, max_qty: 100, lead_time: 7, safety_stock: 5, warehouse_id: 'ARMZ28' },
+    { sku: 'SKU-000030', name: 'Item Teste 30', location: 'A-01-02', batch: 'B002', expiry: '2026-12-31', quantity: 25, status: 'disponivel', image_url: '', category: 'Teste', unit: 'UN', min_qty: 5, max_qty: 50, lead_time: 7, safety_stock: 5, warehouse_id: 'ARMZ28' },
+    { sku: 'SKU-000011', name: 'Pneu 295/80 R22.5', location: 'B-02-01', batch: 'B003', expiry: '2026-12-31', quantity: 100, status: 'disponivel', image_url: '', category: 'Pneus', unit: 'UN', min_qty: 20, max_qty: 200, lead_time: 14, safety_stock: 10, warehouse_id: 'ARMZ28' },
+    { sku: 'OLEO-15W40', name: 'Óleo Motor 15W40', location: 'C-01-01', batch: 'B004', expiry: '2027-06-30', quantity: 200, status: 'disponivel', image_url: '', category: 'Óleo', unit: 'L', min_qty: 50, max_qty: 500, lead_time: 10, safety_stock: 25, warehouse_id: 'ARMZ28' },
+    { sku: 'FILT-001', name: 'Filtro de Óleo', location: 'C-01-02', batch: 'B005', expiry: '2027-12-31', quantity: 80, status: 'disponivel', image_url: '', category: 'Filtros', unit: 'UN', min_qty: 15, max_qty: 150, lead_time: 10, safety_stock: 10, warehouse_id: 'ARMZ28' }
+  ],
+  [STORAGE_KEYS.VEHICLES]: [
+    { plate: 'BGM-1001', model: 'Volvo FH 540', type: 'Caminhão', status: 'Disponível', last_maintenance: '15/01/2026', cost_center: 'OPS-CD' },
+    { plate: 'CHN-1002', model: 'Mercedes Actros', type: 'Carreta', status: 'Disponível', last_maintenance: '20/01/2026', cost_center: 'MAN-OFI' },
+    { plate: 'DIO-1003', model: 'Volvo FH 460', type: 'Utilitário', status: 'Em Viagem', last_maintenance: '10/01/2026', cost_center: 'OPS-CD' },
+    { plate: 'ELQ-1004', model: 'Scania R450', type: 'Caminhão', status: 'Manutenção', last_maintenance: '25/01/2026', cost_center: 'OPS-CD' }
+  ],
+  [STORAGE_KEYS.REQUESTS]: [
+    { id: 'REQ-6037', sku: 'SKU-000028', name: 'Item Teste 28', qty: 2, plate: 'BGM-1001', dept: 'OF-OPERAÇÕES', priority: 'normal', status: 'aprovacao', created_at: new Date().toISOString(), cost_center: 'OPS-CD', warehouse_id: 'ARMZ28' },
+    { id: 'REQ-TEST-000041', sku: 'SKU-000030', name: 'Item Teste 30', qty: 1, plate: 'CHN-1002', dept: 'MAN-OFICINA', priority: 'alta', status: 'separacao', created_at: new Date().toISOString(), cost_center: 'MAN-OFI', warehouse_id: 'ARMZ28' },
+    { id: 'REQ-OLD-0001', sku: 'SKU-000011', name: 'Pneu 295/80 R22.5', qty: 5, plate: 'DIO-1003', dept: 'OF-OPERAÇÕES', priority: 'normal', status: 'entregue', created_at: new Date().toISOString(), cost_center: 'OPS-CD', warehouse_id: 'ARMZ28' }
+  ],
+  [STORAGE_KEYS.PURCHASE_ORDERS]: [
+    { id: 'PO-001', vendor: 'Fornecedor A', request_date: new Date().toISOString(), status: 'requisicao', priority: 'urgente', total: 5000, requester: 'Sistema', items: [{ sku: 'SKU-000028', name: 'Item Teste 28', qty: 20, price: 100 }], warehouse_id: 'ARMZ28', approval_history: [] },
+    { id: 'PO-002', vendor: 'Fornecedor B', request_date: new Date().toISOString(), status: 'aprovado', priority: 'normal', total: 3000, requester: 'João Silva', items: [{ sku: 'OLEO-15W40', name: 'Óleo Motor 15W40', qty: 50, price: 30 }], warehouse_id: 'ARMZ28', approval_history: [] }
+  ],
+  [STORAGE_KEYS.USERS]: [
+    { id: 'admin', name: 'Administrador', email: 'admin@logiwms.com', role: 'admin', status: 'active', modules: ['warehouse', 'workshop'], allowed_warehouses: ['ARMZ28', 'ARMZ33'], password: 'admin' },
+    { id: 'oper', name: 'Operador', email: 'oper@logiwms.com', role: 'operador', status: 'active', modules: ['warehouse'], allowed_warehouses: ['ARMZ28'], password: 'oper' }
+  ],
+  [STORAGE_KEYS.MOVEMENTS]: [
+    { id: 'M001', timestamp: new Date().toISOString(), type: 'entrada', sku: 'SKU-000028', product_name: 'Item Teste 28', quantity: 50, user: 'Sistema', location: 'A-01-01', reason: 'Carga inicial de teste', warehouse_id: 'ARMZ28' },
+    { id: 'M002', timestamp: new Date().toISOString(), type: 'entrada', sku: 'SKU-000030', product_name: 'Item Teste 30', quantity: 25, user: 'Sistema', location: 'A-01-02', reason: 'Carga inicial de teste', warehouse_id: 'ARMZ28' }
+  ],
+  [STORAGE_KEYS.BATCHES]: []
+};
+
+// Inicializa dados se não existirem
+export const initLocalStorage = () => {
+  Object.entries(INITIAL_DATA).forEach(([key, data]) => {
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+  });
+};
+
+// Limpa todos os dados
+export const clearLocalStorage = () => {
+  Object.values(STORAGE_KEYS).forEach(key => {
+    localStorage.removeItem(key);
+  });
+};
+
+// API Client simulado
+export const localApi = {
+  from: (table: string) => {
+    const key = Object.entries(STORAGE_KEYS).find(([_, v]) => {
+      if (table === 'inventory') return v === STORAGE_KEYS.INVENTORY;
+      if (table === 'material_requests') return v === STORAGE_KEYS.REQUESTS;
+      if (table === 'vehicles') return v === STORAGE_KEYS.VEHICLES;
+      if (table === 'warehouses') return v === STORAGE_KEYS.WAREHOUSES;
+      if (table === 'users') return v === STORAGE_KEYS.USERS;
+      if (table === 'movements') return v === STORAGE_KEYS.MOVEMENTS;
+      if (table === 'purchase_orders') return v === STORAGE_KEYS.PURCHASE_ORDERS;
+      if (table === 'notifications') return v === STORAGE_KEYS.NOTIFICATIONS;
+      if (table === 'cyclic_batches') return v === STORAGE_KEYS.BATCHES;
+      return false;
+    })?.[1] || table;
+
+    let data = JSON.parse(localStorage.getItem(key) || '[]');
+    let filters: Record<string, any> = {};
+    let sortField: string | null = null;
+    let sortAsc = false;
+    let limitVal: number | null = null;
+
+    return {
+      select: (_: string) => {
+        return {
+          eq: (field: string, value: any) => {
+            filters[field] = value;
+            return {
+              order: (_field: string, { ascending = true } = {}) => {
+                sortField = _field;
+                sortAsc = ascending;
+                return { limit: (n: number) => { limitVal = n; return localApi.execute({ data, filters, sortField, sortAsc, limitVal, key }); } };
+              },
+              limit: (n: number) => { limitVal = n; return localApi.execute({ data, filters, sortField, sortAsc, limitVal, key }); }
+            };
+          },
+          order: (_field: string, { ascending = true } = {}) => {
+            sortField = _field;
+            sortAsc = ascending;
+            return {
+              limit: (n: number) => { limitVal = n; return localApi.execute({ data, filters, sortField, sortAsc, limitVal, key }); }
+            };
+          },
+          limit: (n: number) => { limitVal = n; return localApi.execute({ data, filters, sortField, sortAsc, limitVal, key }); }
+        };
+      },
+
+      insert: (newItem: any) => {
+        return {
+          execute: () => {
+            const items = JSON.parse(localStorage.getItem(key) || '[]');
+            items.push(newItem);
+            localStorage.setItem(key, JSON.stringify(items));
+            return { data: newItem, error: null };
+          }
+        };
+      },
+
+      update: (updates: any) => {
+        return {
+          eq: (field: string, value: any) => {
+            return {
+              execute: () => {
+                const items = JSON.parse(localStorage.getItem(key) || '[]');
+                const index = items.findIndex((i: any) => i[field] === value);
+                if (index >= 0) {
+                  items[index] = { ...items[index], ...updates };
+                  localStorage.setItem(key, JSON.stringify(items));
+                  return { data: items[index], error: null };
+                }
+                return { data: null, error: 'Not found' };
+              }
+            };
+          },
+          execute: () => {
+            // Update all matching filters
+            const items = JSON.parse(localStorage.getItem(key) || '[]');
+            const filtered = items.filter((i: any) => 
+              Object.entries(filters).every(([k, v]) => i[k] === v)
+            );
+            filtered.forEach((item: any) => {
+              const idx = items.findIndex((i: any) => 
+                Object.keys(item).every(k => i[k] === item[k])
+              );
+              if (idx >= 0) items[idx] = { ...items[idx], ...updates };
+            });
+            localStorage.setItem(key, JSON.stringify(items));
+            return { data: filtered, error: null };
+          }
+        };
+      },
+
+      delete: () => {
+        return {
+          eq: (field: string, value: any) => {
+            return {
+              execute: () => {
+                const items = JSON.parse(localStorage.getItem(key) || '[]');
+                const filtered = items.filter((i: any) => i[field] !== value);
+                localStorage.setItem(key, JSON.stringify(filtered));
+                return { data: null, error: null };
+              }
+            };
+          }
+        };
+      },
+
+      eq: (field: string, value: any) => {
+        filters[field] = value;
+        return {
+          order: (_field: string, { ascending = true } = {}) => {
+            sortField = _field;
+            sortAsc = ascending;
+            return {
+              limit: (n: number) => { limitVal = n; return localApi.execute({ data, filters, sortField, sortAsc, limitVal, key }); }
+            };
+          },
+          limit: (n: number) => { limitVal = n; return localApi.execute({ data, filters, sortField, sortAsc, limitVal, key }); }
+        };
+      },
+
+      order: (_field: string, { ascending = true } = {}) => {
+        sortField = _field;
+        sortAsc = ascending;
+        return {
+          limit: (n: number) => { limitVal = n; return localApi.execute({ data, filters, sortField, sortAsc, limitVal, key }); }
+        };
+      },
+
+      limit: (n: number) => { 
+        limitVal = n; 
+        return localApi.execute({ data, filters, sortField, sortAsc, limitVal, key }); 
+      },
+
+      execute: () => localApi.execute({ data, filters, sortField, sortAsc, limitVal, key })
+    };
+  },
+
+  execute: ({ data, filters, sortField, sortAsc, limitVal, key }: any) => {
+    let result = [...data];
+    
+    // Apply filters
+    Object.entries(filters).forEach(([field, value]) => {
+      result = result.filter((i: any) => i[field] === value);
+    });
+    
+    // Apply sorting
+    if (sortField) {
+      result.sort((a: any, b: any) => {
+        if (a[sortField] < b[sortField]) return sortAsc ? -1 : 1;
+        if (a[sortField] > b[sortField]) return sortAsc ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    // Apply limit
+    if (limitVal) {
+      result = result.slice(0, limitVal);
+    }
+    
+    return { data: result, error: null };
+  }
+};

@@ -1,0 +1,37 @@
+﻿diff --git a/components/ModuleSelector.tsx b/components/ModuleSelector.tsx
+index 0959e89..a6772c7 100644
+--- a/components/ModuleSelector.tsx
++++ b/components/ModuleSelector.tsx
+@@ -9,6 +9,7 @@ interface ModuleSelectorProps {
+ 
+ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ user, onSelectModule, onLogout }) => {
+   const canAccessWorkshop = user.role === 'admin' || Boolean(user.hasWorkshopAccess);
++  const canAccessFleet = user.role === 'admin' || Boolean(user.hasFleetAccess);
+ 
+   const modules: {
+     id: SystemModule;
+@@ -36,6 +37,15 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ user, onSelectMo
+       image: '/workshop-bg.jpg',
+       disabled: !canAccessWorkshop,
+     },
++    {
++      id: 'fleet',
++      name: 'Gestao de Frota',
++      description: 'Controle de veiculos, condutores, multas, tacografo e relatorios',
++      icon: 'M3 13h2l1.5-4.5A2 2 0 018.4 7h7.2a2 2 0 011.9 1.5L19 13h2a1 1 0 011 1v2a1 1 0 01-1 1h-1a2 2 0 11-4 0H8a2 2 0 11-4 0H3a1 1 0 01-1-1v-2a1 1 0 011-1zm4.5 0h9l-1.1-3.2a.5.5 0 00-.47-.3H8.07a.5.5 0 00-.47.34L6.5 13z',
++      color: 'from-indigo-500 to-cyan-600',
++      image: '/fleet-bg.jpg',
++      disabled: !canAccessFleet,
++    },
+   ];
+ 
+   return (
+@@ -75,7 +85,7 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ user, onSelectMo
+             </p>
+           </div>
+ 
+-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
++          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-6xl mx-auto">
+             {modules.map((module) => (
+               <button
+                 key={module.id}

@@ -1,0 +1,2021 @@
+﻿diff --git a/api-backend/data/purchase_orders.json b/api-backend/data/purchase_orders.json
+index 664b2a3..9a76873 100644
+--- a/api-backend/data/purchase_orders.json
++++ b/api-backend/data/purchase_orders.json
+@@ -1,278 +1,4 @@
+ [
+-  {
+-    "id": "PO-TEST-00001",
+-    "vendor": "Fornecedor 20",
+-    "request_date": "2025-09-07T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 102,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000048",
+-        "name": "Item Teste 48",
+-        "qty": 2,
+-        "price": 51
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": "2026-02-08T19:26:43.200Z",
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100001",
+-    "approval_history": [
+-      {
+-        "id": "1e9ef5f7-aa19-48b6-9c79-f4984f5aa5e0",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:26:43.850Z",
+-        "status": "recebido",
+-        "description": "Entrega realizada normalmente"
+-      }
+-    ],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-11-09T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00002",
+-    "vendor": "Fornecedor 31",
+-    "request_date": "2025-11-18T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 156,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000026",
+-        "name": "Item Teste 26",
+-        "qty": 3,
+-        "price": 52
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": "2026-02-08T11:13:32.111Z",
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100002",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-01-15T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00003",
+-    "vendor": "Fornecedor 46",
+-    "request_date": "2026-01-31T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "urgente",
+-    "total": 212,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000004",
+-        "name": "Item Teste 4",
+-        "qty": 4,
+-        "price": 53
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": "2026-02-08T11:16:41.684Z",
+-    "received_at": "2026-02-08T11:17:39.333Z",
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "erew",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-12-11T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00004",
+-    "vendor": "Fornecedor 45",
+-    "request_date": "2025-10-31T03:29:08.180Z",
+-    "status": "requisicao",
+-    "priority": "urgente",
+-    "total": 270,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000042",
+-        "name": "Item Teste 42",
+-        "qty": 5,
+-        "price": 54
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100004",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-08-26T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00005",
+-    "vendor": "Fornecedor 5",
+-    "request_date": "2025-12-26T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 330,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000026",
+-        "name": "Item Teste 26",
+-        "qty": 6,
+-        "price": 55
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": "2026-02-08T03:43:55.110Z",
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100005",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-10-03T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00006",
+-    "vendor": "Fornecedor 10",
+-    "request_date": "2025-09-16T03:29:08.180Z",
+-    "status": "aprovado",
+-    "priority": "normal",
+-    "total": 392,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000015",
+-        "name": "Item Teste 15",
+-        "qty": 7,
+-        "price": 56
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100006",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-02-04T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00007",
+-    "vendor": "Fornecedor 35",
+-    "request_date": "2025-11-03T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "urgente",
+-    "total": 456,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000037",
+-        "name": "Item Teste 37",
+-        "qty": 8,
+-        "price": 57
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": "2026-02-08T19:26:30.046Z",
+-    "received_at": "2026-02-08T19:26:37.369Z",
+-    "quotes_added_at": null,
+-    "approved_at": "2026-02-08T19:26:26.094Z",
+-    "rejected_at": null,
+-    "vendor_order_number": "sr",
+-    "approval_history": [
+-      {
+-        "id": "9b3ccc24-f330-4fe7-9c44-dc9e14ecdd69",
+-        "action": "approved",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:26:26.094Z",
+-        "status": "aprovado",
+-        "description": "Aprovado por gestor"
+-      },
+-      {
+-        "id": "780899e6-d752-4531-bbd5-81d5c38ff8d0",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:26:26.094Z",
+-        "status": "aprovado",
+-        "description": "Aprovação financeira e operacional concluída"
+-      },
+-      {
+-        "id": "8ff4daa0-07cd-476d-a2a3-82b5a0458ada",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:26:30.046Z",
+-        "status": "enviado",
+-        "description": "Pedido enviado ao fornecedor (Nº sr)"
+-      },
+-      {
+-        "id": "a8af5bc5-a108-47e7-b76e-29de647913f6",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:26:38.066Z",
+-        "status": "recebido",
+-        "description": "Entrega realizada normalmente"
+-      }
+-    ],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-09-04T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00008",
+-    "vendor": "Fornecedor 45",
+-    "request_date": "2025-09-13T03:29:08.180Z",
+-    "status": "cotacao",
+-    "priority": "urgente",
+-    "total": 522,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000034",
+-        "name": "Item Teste 34",
+-        "qty": 9,
+-        "price": 58
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100008",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-10-14T03:29:08.180Z"
+-  },
+   {
+     "id": "PO-TEST-00009",
+     "vendor": "Fornecedor 38",
+@@ -342,939 +68,9 @@
+     "items": [
+       {
+         "sku": "SKU-000041",
+-        "name": "Item Teste 41",
+-        "qty": 12,
+-        "price": 61
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100011",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-12-14T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00012",
+-    "vendor": "Fornecedor 10",
+-    "request_date": "2025-10-30T03:29:08.180Z",
+-    "status": "requisicao",
+-    "priority": "normal",
+-    "total": 806,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000010",
+-        "name": "Item Teste 10",
+-        "qty": 13,
+-        "price": 62
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100012",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-10-24T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00013",
+-    "vendor": "Fornecedor 4",
+-    "request_date": "2026-01-07T03:29:08.180Z",
+-    "status": "aprovado",
+-    "priority": "urgente",
+-    "total": 882,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000033",
+-        "name": "Item Teste 33",
+-        "qty": 14,
+-        "price": 63
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100013",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-08-18T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00014",
+-    "vendor": "Fornecedor 1",
+-    "request_date": "2026-01-28T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 1,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000027",
+-        "name": "Item Teste 27",
+-        "qty": 15,
+-        "price": 64
+-      }
+-    ],
+-    "quotes": [
+-      {
+-        "id": "Q1-1770549553061",
+-        "vendorId": "V-00001",
+-        "vendorName": "Fornecedor 1",
+-        "items": [
+-          {
+-            "sku": "SKU-000027",
+-            "unitPrice": 0.06666666666666667,
+-            "leadTime": "7 dias"
+-          }
+-        ],
+-        "totalValue": 1,
+-        "validUntil": "10/03/2026",
+-        "notes": "gfd",
+-        "quotedBy": "Comprador",
+-        "quotedAt": "08/02/2026, 07:19:13",
+-        "isSelected": true
+-      }
+-    ],
+-    "selected_quote_id": "Q1-1770549553061",
+-    "sent_to_vendor_at": "2026-02-08T11:20:45.819Z",
+-    "received_at": "2026-02-08T11:21:28.286Z",
+-    "quotes_added_at": "2026-02-08T11:19:13.061Z",
+-    "approved_at": "2026-02-08T11:20:08.756Z",
+-    "rejected_at": null,
+-    "vendor_order_number": "eer",
+-    "approval_history": [
+-      {
+-        "id": "APR-1770549608756",
+-        "action": "approved",
+-        "by": "Gestor de Compras",
+-        "at": "08/02/2026, 07:20:08"
+-      }
+-    ],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-08-27T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00015",
+-    "vendor": "Fornecedor 40",
+-    "request_date": "2025-08-28T03:29:08.180Z",
+-    "status": "pendente",
+-    "priority": "urgente",
+-    "total": 1040,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000035",
+-        "name": "Item Teste 35",
+-        "qty": 16,
+-        "price": 65
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100015",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-11-03T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00016",
+-    "vendor": "Fornecedor 12",
+-    "request_date": "2025-11-05T03:29:08.180Z",
+-    "status": "cotacao",
+-    "priority": "normal",
+-    "total": 1122,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000011",
+-        "name": "Item Teste 11",
+-        "qty": 17,
+-        "price": 66
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100016",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-01-27T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00017",
+-    "vendor": "Fornecedor 37",
+-    "request_date": "2025-09-29T03:29:08.180Z",
+-    "status": "aprovado",
+-    "priority": "urgente",
+-    "total": 1206,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000018",
+-        "name": "Item Teste 18",
+-        "qty": 18,
+-        "price": 67
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100017",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-08-27T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00018",
+-    "vendor": "Fornecedor 1",
+-    "request_date": "2025-12-21T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 1,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000046",
+-        "name": "Item Teste 46",
+-        "qty": 19,
+-        "price": 68
+-      }
+-    ],
+-    "quotes": [
+-      {
+-        "id": "Q1-1770577570254",
+-        "vendorId": "V-00001",
+-        "vendorName": "Fornecedor 1",
+-        "items": [
+-          {
+-            "sku": "SKU-000046",
+-            "unitPrice": 0.05263157894736842,
+-            "leadTime": "7 dias"
+-          }
+-        ],
+-        "totalValue": 1,
+-        "validUntil": "10/03/2026",
+-        "notes": "wreeee",
+-        "quotedBy": "Comprador",
+-        "quotedAt": "08/02/2026, 16:06:10",
+-        "isSelected": true
+-      }
+-    ],
+-    "selected_quote_id": "Q1-1770577570254",
+-    "sent_to_vendor_at": "2026-02-08T19:06:27.301Z",
+-    "received_at": "2026-02-08T19:06:42.858Z",
+-    "quotes_added_at": "2026-02-08T19:06:10.255Z",
+-    "approved_at": "2026-02-08T19:06:20.605Z",
+-    "rejected_at": null,
+-    "vendor_order_number": "wew",
+-    "approval_history": [
+-      {
+-        "id": "3ba1c09f-73d7-44fb-af2c-a543f2fb5404",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:06:10.255Z",
+-        "status": "cotacao",
+-        "description": "Cotação de fornecedores vinculada"
+-      },
+-      {
+-        "id": "74d7d2cf-fdcb-4b4b-bca5-5bb630c91b2b",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:06:12.053Z",
+-        "status": "pendente",
+-        "description": "Pedido enviado para aprovação do gestor"
+-      },
+-      {
+-        "id": "15dd058a-a36e-497d-ae94-897fff88cdb8",
+-        "action": "approved",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:06:20.605Z",
+-        "status": "aprovado",
+-        "description": "Aprovado por gestor"
+-      },
+-      {
+-        "id": "385baa22-5c4f-4a12-bf05-a31053bf8884",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:06:20.605Z",
+-        "status": "aprovado",
+-        "description": "Aprovação financeira e operacional concluída"
+-      },
+-      {
+-        "id": "8ae8098e-a7c9-459d-9833-2b2be4e9c161",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:06:27.301Z",
+-        "status": "enviado",
+-        "description": "Pedido enviado ao fornecedor (Nº wew)"
+-      },
+-      {
+-        "id": "fb4a29a5-6fcf-4d23-9cb8-6652641b1010",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:06:43.490Z",
+-        "status": "recebido",
+-        "description": "Entrega realizada normalmente"
+-      }
+-    ],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-08-26T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00019",
+-    "vendor": "Fornecedor 46",
+-    "request_date": "2026-01-03T03:29:08.180Z",
+-    "status": "cotacao",
+-    "priority": "urgente",
+-    "total": 1380,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000047",
+-        "name": "Item Teste 47",
+-        "qty": 20,
+-        "price": 69
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100019",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-10-15T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00020",
+-    "vendor": "Fornecedor 27",
+-    "request_date": "2025-10-25T03:29:08.180Z",
+-    "status": "requisicao",
+-    "priority": "normal",
+-    "total": 70,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000002",
+-        "name": "Item Teste 2",
+-        "qty": 1,
+-        "price": 70
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100020",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-02-03T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00021",
+-    "vendor": "Fornecedor 29",
+-    "request_date": "2025-11-15T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 142,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000010",
+-        "name": "Item Teste 10",
+-        "qty": 2,
+-        "price": 71
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100021",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-12-13T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00022",
+-    "vendor": "Fornecedor 6",
+-    "request_date": "2025-10-26T03:29:08.180Z",
+-    "status": "pendente",
+-    "priority": "normal",
+-    "total": 216,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000004",
+-        "name": "Item Teste 4",
+-        "qty": 3,
+-        "price": 72
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100022",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-10-21T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00023",
+-    "vendor": "Fornecedor 1",
+-    "request_date": "2025-08-22T03:29:08.180Z",
+-    "status": "requisicao",
+-    "priority": "urgente",
+-    "total": 292,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000010",
+-        "name": "Item Teste 10",
+-        "qty": 4,
+-        "price": 73
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100023",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-01-19T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00024",
+-    "vendor": "Fornecedor 9",
+-    "request_date": "2025-08-28T03:29:08.180Z",
+-    "status": "cotacao",
+-    "priority": "normal",
+-    "total": 370,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000010",
+-        "name": "Item Teste 10",
+-        "qty": 5,
+-        "price": 74
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100024",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-01-03T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00025",
+-    "vendor": "Fornecedor 48",
+-    "request_date": "2026-01-29T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "urgente",
+-    "total": 450,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000048",
+-        "name": "Item Teste 48",
+-        "qty": 6,
+-        "price": 75
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": "2026-02-08T11:18:21.212Z",
+-    "received_at": "2026-02-08T17:35:48.504Z",
+-    "quotes_added_at": null,
+-    "approved_at": "2026-02-08T11:17:56.675Z",
+-    "rejected_at": null,
+-    "vendor_order_number": "324",
+-    "approval_history": [
+-      {
+-        "id": "APR-1770549476675",
+-        "action": "approved",
+-        "by": "Gestor de Compras",
+-        "at": "08/02/2026, 08:17:56"
+-      },
+-      {
+-        "id": "6d4aecc2-9a48-47e6-90c2-27ee8bcc54b7",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T17:35:49.137Z",
+-        "status": "recebido",
+-        "description": "Entrega realizada normalmente"
+-      }
+-    ],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-11-02T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00026",
+-    "vendor": "Fornecedor 2",
+-    "request_date": "2025-10-29T03:29:08.180Z",
+-    "status": "requisicao",
+-    "priority": "normal",
+-    "total": 532,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000040",
+-        "name": "Item Teste 40",
+-        "qty": 7,
+-        "price": 76
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100026",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-11-14T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00027",
+-    "vendor": "Fornecedor 30",
+-    "request_date": "2025-09-10T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 616,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000002",
+-        "name": "Item Teste 2",
+-        "qty": 8,
+-        "price": 77
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": "2026-02-08T19:04:15.478Z",
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100027",
+-    "approval_history": [
+-      {
+-        "id": "751f2094-f0ec-4095-b4cf-712674ecb5c6",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T19:04:16.117Z",
+-        "status": "recebido",
+-        "description": "Entrega realizada normalmente"
+-      }
+-    ],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-11-02T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00028",
+-    "vendor": "Fornecedor 38",
+-    "request_date": "2026-01-14T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 702,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000034",
+-        "name": "Item Teste 34",
+-        "qty": 9,
+-        "price": 78
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": "2026-02-08T03:39:46.885Z",
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100028",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-09-28T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00029",
+-    "vendor": "Fornecedor 12",
+-    "request_date": "2025-09-15T03:29:08.180Z",
+-    "status": "pendente",
+-    "priority": "normal",
+-    "total": 790,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000043",
+-        "name": "Item Teste 43",
+-        "qty": 10,
+-        "price": 79
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100029",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-09-07T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00030",
+-    "vendor": "Fornecedor 38",
+-    "request_date": "2025-09-17T03:29:08.180Z",
+-    "status": "pendente",
+-    "priority": "normal",
+-    "total": 880,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000017",
+-        "name": "Item Teste 17",
+-        "qty": 11,
+-        "price": 80
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100030",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-01-10T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00031",
+-    "vendor": "Fornecedor 40",
+-    "request_date": "2025-10-28T03:29:08.180Z",
+-    "status": "requisicao",
+-    "priority": "urgente",
+-    "total": 972,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000035",
+-        "name": "Item Teste 35",
+-        "qty": 12,
+-        "price": 81
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100031",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-01-14T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00032",
+-    "vendor": "Fornecedor 50",
+-    "request_date": "2025-12-12T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 1066,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000011",
+-        "name": "Item Teste 11",
+-        "qty": 13,
+-        "price": 82
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100032",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-01-02T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00033",
+-    "vendor": "Fornecedor 20",
+-    "request_date": "2025-12-21T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 1162,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000050",
+-        "name": "Item Teste 50",
+-        "qty": 14,
+-        "price": 83
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100033",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-11-26T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00034",
+-    "vendor": "Fornecedor 37",
+-    "request_date": "2026-02-01T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 1260,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000048",
+-        "name": "Item Teste 48",
+-        "qty": 15,
+-        "price": 84
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": "2026-02-08T04:20:28.027Z",
+-    "received_at": "2026-02-08T09:26:38.751Z",
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "dhdg",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-01-22T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00035",
+-    "vendor": "Fornecedor 2",
+-    "request_date": "2026-01-10T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "urgente",
+-    "total": 1360,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000024",
+-        "name": "Item Teste 24",
+-        "qty": 16,
+-        "price": 85
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": "2026-02-08T03:40:27.958Z",
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100035",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2026-01-25T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00036",
+-    "vendor": "Fornecedor 11",
+-    "request_date": "2025-09-04T03:29:08.180Z",
+-    "status": "pendente",
+-    "priority": "normal",
+-    "total": 1462,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000043",
+-        "name": "Item Teste 43",
+-        "qty": 17,
+-        "price": 86
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100036",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-10-29T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00037",
+-    "vendor": "Fornecedor 20",
+-    "request_date": "2025-09-20T03:29:08.180Z",
+-    "status": "requisicao",
+-    "priority": "urgente",
+-    "total": 1566,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000030",
+-        "name": "Item Teste 30",
+-        "qty": 18,
+-        "price": 87
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100037",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-08-19T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00038",
+-    "vendor": "Fornecedor 8",
+-    "request_date": "2025-08-28T03:29:08.180Z",
+-    "status": "recebido",
+-    "priority": "urgente",
+-    "total": 1672,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000031",
+-        "name": "Item Teste 31",
+-        "qty": 19,
+-        "price": 88
+-      }
+-    ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100038",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-09-17T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-TEST-00039",
+-    "vendor": "Fornecedor 7",
+-    "request_date": "2025-08-21T03:29:08.180Z",
+-    "status": "pendente",
+-    "priority": "urgente",
+-    "total": 1780,
+-    "requester": "Comprador Teste",
+-    "items": [
+-      {
+-        "sku": "SKU-000013",
+-        "name": "Item Teste 13",
+-        "qty": 20,
+-        "price": 89
++        "name": "Item Teste 41",
++        "qty": 12,
++        "price": 61
+       }
+     ],
+     "quotes": [],
+@@ -1284,26 +80,26 @@
+     "quotes_added_at": null,
+     "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "VN-100039",
++    "vendor_order_number": "VN-100011",
+     "approval_history": [],
+     "cost_center": "OPS-CD",
+     "warehouse_id": "ARMZ28",
+-    "created_at": "2026-02-02T03:29:08.180Z"
++    "created_at": "2025-12-14T03:29:08.180Z"
+   },
+   {
+-    "id": "PO-TEST-00040",
+-    "vendor": "Fornecedor 45",
+-    "request_date": "2025-08-18T03:29:08.180Z",
++    "id": "PO-TEST-00017",
++    "vendor": "Fornecedor 37",
++    "request_date": "2025-09-29T03:29:08.180Z",
+     "status": "aprovado",
+     "priority": "urgente",
+-    "total": 90,
++    "total": 1206,
+     "requester": "Comprador Teste",
+     "items": [
+       {
+-        "sku": "SKU-000035",
+-        "name": "Item Teste 35",
+-        "qty": 1,
+-        "price": 90
++        "sku": "SKU-000018",
++        "name": "Item Teste 18",
++        "qty": 18,
++        "price": 67
+       }
+     ],
+     "quotes": [],
+@@ -1313,72 +109,55 @@
+     "quotes_added_at": null,
+     "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "VN-100040",
++    "vendor_order_number": "VN-100017",
+     "approval_history": [],
+     "cost_center": "OPS-CD",
+     "warehouse_id": "ARMZ28",
+-    "created_at": "2025-08-31T03:29:08.180Z"
++    "created_at": "2025-08-27T03:29:08.180Z"
+   },
+   {
+-    "id": "PO-TEST-00041",
+-    "vendor": "Fornecedor 43",
+-    "request_date": "2025-11-21T03:29:08.180Z",
++    "id": "PO-TEST-00021",
++    "vendor": "Fornecedor 29",
++    "request_date": "2025-11-15T03:29:08.180Z",
+     "status": "recebido",
+     "priority": "normal",
+-    "total": 182,
++    "total": 142,
+     "requester": "Comprador Teste",
+     "items": [
+       {
+-        "sku": "SKU-000032",
+-        "name": "Item Teste 32",
++        "sku": "SKU-000010",
++        "name": "Item Teste 10",
+         "qty": 2,
+-        "price": 91
++        "price": 71
+       }
+     ],
+     "quotes": [],
+     "selected_quote_id": null,
+-    "sent_to_vendor_at": "2026-02-08T17:40:01.858Z",
+-    "received_at": "2026-02-08T17:40:12.874Z",
++    "sent_to_vendor_at": null,
++    "received_at": null,
+     "quotes_added_at": null,
+     "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "qwe",
+-    "approval_history": [
+-      {
+-        "id": "288e5a11-3d1f-465c-b448-18508acd0e61",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T17:40:01.858Z",
+-        "status": "enviado",
+-        "description": "Pedido enviado ao fornecedor (Nº qwe)"
+-      },
+-      {
+-        "id": "381cbd5a-b7de-483f-8836-9ba8c87c0c16",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T17:40:13.523Z",
+-        "status": "recebido",
+-        "description": "Entrega realizada normalmente"
+-      }
+-    ],
++    "vendor_order_number": "VN-100021",
++    "approval_history": [],
+     "cost_center": "OPS-CD",
+     "warehouse_id": "ARMZ28",
+-    "created_at": "2025-12-31T03:29:08.180Z"
++    "created_at": "2025-12-13T03:29:08.180Z"
+   },
+   {
+-    "id": "PO-TEST-00042",
+-    "vendor": "Fornecedor 33",
+-    "request_date": "2025-09-25T03:29:08.180Z",
++    "id": "PO-TEST-00022",
++    "vendor": "Fornecedor 6",
++    "request_date": "2025-10-26T03:29:08.180Z",
+     "status": "pendente",
+-    "priority": "urgente",
+-    "total": 276,
++    "priority": "normal",
++    "total": 216,
+     "requester": "Comprador Teste",
+     "items": [
+       {
+-        "sku": "SKU-000042",
+-        "name": "Item Teste 42",
++        "sku": "SKU-000004",
++        "name": "Item Teste 4",
+         "qty": 3,
+-        "price": 92
++        "price": 72
+       }
+     ],
+     "quotes": [],
+@@ -1388,26 +167,26 @@
+     "quotes_added_at": null,
+     "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "VN-100042",
++    "vendor_order_number": "VN-100022",
+     "approval_history": [],
+     "cost_center": "OPS-CD",
+     "warehouse_id": "ARMZ28",
+-    "created_at": "2025-08-15T03:29:08.180Z"
++    "created_at": "2025-10-21T03:29:08.180Z"
+   },
+   {
+-    "id": "PO-TEST-00043",
+-    "vendor": "Fornecedor 48",
+-    "request_date": "2026-01-01T03:29:08.180Z",
+-    "status": "aprovado",
+-    "priority": "urgente",
+-    "total": 372,
++    "id": "PO-TEST-00026",
++    "vendor": "Fornecedor 2",
++    "request_date": "2025-10-29T03:29:08.180Z",
++    "status": "requisicao",
++    "priority": "normal",
++    "total": 532,
+     "requester": "Comprador Teste",
+     "items": [
+       {
+-        "sku": "SKU-000011",
+-        "name": "Item Teste 11",
+-        "qty": 4,
+-        "price": 93
++        "sku": "SKU-000040",
++        "name": "Item Teste 40",
++        "qty": 7,
++        "price": 76
+       }
+     ],
+     "quotes": [],
+@@ -1415,45 +194,28 @@
+     "sent_to_vendor_at": null,
+     "received_at": null,
+     "quotes_added_at": null,
+-    "approved_at": "2026-02-08T17:39:44.377Z",
++    "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "VN-100043",
+-    "approval_history": [
+-      {
+-        "id": "e6347507-0d62-405d-8653-2b64424fed4e",
+-        "action": "approved",
+-        "by": "Administrador",
+-        "at": "2026-02-08T17:39:44.377Z",
+-        "status": "aprovado",
+-        "description": "Aprovado por gestor"
+-      },
+-      {
+-        "id": "5f04a5ba-2bee-4a6e-bf44-0cc5052aba35",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-08T17:39:44.378Z",
+-        "status": "aprovado",
+-        "description": "Aprovação financeira e operacional concluída"
+-      }
+-    ],
++    "vendor_order_number": "VN-100026",
++    "approval_history": [],
+     "cost_center": "OPS-CD",
+     "warehouse_id": "ARMZ28",
+-    "created_at": "2025-10-09T03:29:08.180Z"
++    "created_at": "2025-11-14T03:29:08.180Z"
+   },
+   {
+-    "id": "PO-TEST-00044",
+-    "vendor": "Fornecedor 32",
+-    "request_date": "2026-01-12T03:29:08.180Z",
+-    "status": "cotacao",
+-    "priority": "urgente",
+-    "total": 470,
++    "id": "PO-TEST-00030",
++    "vendor": "Fornecedor 38",
++    "request_date": "2025-09-17T03:29:08.180Z",
++    "status": "pendente",
++    "priority": "normal",
++    "total": 880,
+     "requester": "Comprador Teste",
+     "items": [
+       {
+-        "sku": "SKU-000028",
+-        "name": "Item Teste 28",
+-        "qty": 5,
+-        "price": 94
++        "sku": "SKU-000017",
++        "name": "Item Teste 17",
++        "qty": 11,
++        "price": 80
+       }
+     ],
+     "quotes": [],
+@@ -1463,26 +225,26 @@
+     "quotes_added_at": null,
+     "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "VN-100044",
++    "vendor_order_number": "VN-100030",
+     "approval_history": [],
+     "cost_center": "OPS-CD",
+     "warehouse_id": "ARMZ28",
+-    "created_at": "2025-11-25T03:29:08.180Z"
++    "created_at": "2026-01-10T03:29:08.180Z"
+   },
+   {
+-    "id": "PO-TEST-00045",
+-    "vendor": "Fornecedor 13",
+-    "request_date": "2026-01-12T03:29:08.180Z",
+-    "status": "cotacao",
++    "id": "PO-TEST-00031",
++    "vendor": "Fornecedor 40",
++    "request_date": "2025-10-28T03:29:08.180Z",
++    "status": "requisicao",
+     "priority": "urgente",
+-    "total": 570,
++    "total": 972,
+     "requester": "Comprador Teste",
+     "items": [
+       {
+-        "sku": "SKU-000026",
+-        "name": "Item Teste 26",
+-        "qty": 6,
+-        "price": 95
++        "sku": "SKU-000035",
++        "name": "Item Teste 35",
++        "qty": 12,
++        "price": 81
+       }
+     ],
+     "quotes": [],
+@@ -1492,26 +254,26 @@
+     "quotes_added_at": null,
+     "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "VN-100045",
++    "vendor_order_number": "VN-100031",
+     "approval_history": [],
+     "cost_center": "OPS-CD",
+     "warehouse_id": "ARMZ28",
+-    "created_at": "2025-12-30T03:29:08.180Z"
++    "created_at": "2026-01-14T03:29:08.180Z"
+   },
+   {
+-    "id": "PO-TEST-00046",
+-    "vendor": "Fornecedor 25",
+-    "request_date": "2025-10-28T03:29:08.180Z",
+-    "status": "cotacao",
++    "id": "PO-TEST-00032",
++    "vendor": "Fornecedor 50",
++    "request_date": "2025-12-12T03:29:08.180Z",
++    "status": "recebido",
+     "priority": "normal",
+-    "total": 672,
++    "total": 1066,
+     "requester": "Comprador Teste",
+     "items": [
+       {
+-        "sku": "SKU-000002",
+-        "name": "Item Teste 2",
+-        "qty": 7,
+-        "price": 96
++        "sku": "SKU-000011",
++        "name": "Item Teste 11",
++        "qty": 13,
++        "price": 82
+       }
+     ],
+     "quotes": [],
+@@ -1521,26 +283,26 @@
+     "quotes_added_at": null,
+     "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "VN-100046",
++    "vendor_order_number": "VN-100032",
+     "approval_history": [],
+     "cost_center": "OPS-CD",
+     "warehouse_id": "ARMZ28",
+-    "created_at": "2025-12-16T03:29:08.180Z"
++    "created_at": "2026-01-02T03:29:08.180Z"
+   },
+   {
+-    "id": "PO-TEST-00047",
+-    "vendor": "Fornecedor 35",
+-    "request_date": "2025-10-03T03:29:08.180Z",
++    "id": "PO-TEST-00033",
++    "vendor": "Fornecedor 20",
++    "request_date": "2025-12-21T03:29:08.180Z",
+     "status": "recebido",
+-    "priority": "urgente",
+-    "total": 776,
++    "priority": "normal",
++    "total": 1162,
+     "requester": "Comprador Teste",
+     "items": [
+       {
+-        "sku": "SKU-000043",
+-        "name": "Item Teste 43",
+-        "qty": 8,
+-        "price": 97
++        "sku": "SKU-000050",
++        "name": "Item Teste 50",
++        "qty": 14,
++        "price": 83
+       }
+     ],
+     "quotes": [],
+@@ -1550,26 +312,26 @@
+     "quotes_added_at": null,
+     "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "VN-100047",
++    "vendor_order_number": "VN-100033",
+     "approval_history": [],
+     "cost_center": "OPS-CD",
+     "warehouse_id": "ARMZ28",
+-    "created_at": "2026-01-09T03:29:08.180Z"
++    "created_at": "2025-11-26T03:29:08.180Z"
+   },
+   {
+-    "id": "PO-TEST-00048",
+-    "vendor": "Fornecedor 5",
+-    "request_date": "2025-09-30T03:29:08.180Z",
+-    "status": "aprovado",
++    "id": "PO-TEST-00037",
++    "vendor": "Fornecedor 20",
++    "request_date": "2025-09-20T03:29:08.180Z",
++    "status": "requisicao",
+     "priority": "urgente",
+-    "total": 882,
++    "total": 1566,
+     "requester": "Comprador Teste",
+     "items": [
+       {
+-        "sku": "SKU-000020",
+-        "name": "Item Teste 20",
+-        "qty": 9,
+-        "price": 98
++        "sku": "SKU-000030",
++        "name": "Item Teste 30",
++        "qty": 18,
++        "price": 87
+       }
+     ],
+     "quotes": [],
+@@ -1579,252 +341,283 @@
+     "quotes_added_at": null,
+     "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "VN-100048",
++    "vendor_order_number": "VN-100037",
+     "approval_history": [],
+     "cost_center": "OPS-CD",
+     "warehouse_id": "ARMZ28",
+-    "created_at": "2025-11-12T03:29:08.180Z"
++    "created_at": "2025-08-19T03:29:08.180Z"
+   },
+   {
+-    "id": "PO-TEST-00049",
+-    "vendor": "Fornecedor 2",
+-    "request_date": "2025-12-10T03:29:08.180Z",
++    "id": "PO-TEST-00038",
++    "vendor": "Fornecedor 8",
++    "request_date": "2025-08-28T03:29:08.180Z",
+     "status": "recebido",
+-    "priority": "normal",
+-    "total": 990,
++    "priority": "urgente",
++    "total": 1672,
+     "requester": "Comprador Teste",
+     "items": [
+       {
+-        "sku": "SKU-000045",
+-        "name": "Item Teste 45",
+-        "qty": 10,
+-        "price": 99
++        "sku": "SKU-000031",
++        "name": "Item Teste 31",
++        "qty": 19,
++        "price": 88
+       }
+     ],
+     "quotes": [],
+     "selected_quote_id": null,
+-    "sent_to_vendor_at": "2026-02-09T03:53:39.580Z",
+-    "received_at": "2026-02-09T15:04:37.995Z",
++    "sent_to_vendor_at": null,
++    "received_at": null,
+     "quotes_added_at": null,
+-    "approved_at": "2026-02-09T03:53:36.317Z",
++    "approved_at": null,
+     "rejected_at": null,
+-    "vendor_order_number": "ddd",
+-    "approval_history": [
+-      {
+-        "id": "fd34f53f-26e7-4f4a-9e46-ea0fd961b522",
+-        "action": "approved",
+-        "by": "Administrador",
+-        "at": "2026-02-09T03:53:36.317Z",
+-        "status": "aprovado",
+-        "description": "Aprovado por gestor"
+-      },
++    "vendor_order_number": "VN-100038",
++    "approval_history": [],
++    "cost_center": "OPS-CD",
++    "warehouse_id": "ARMZ28",
++    "created_at": "2025-09-17T03:29:08.180Z"
++  },
++  {
++    "id": "PO-2026-8481",
++    "vendor": "A definir via cotações",
++    "status": "requisicao",
++    "priority": "urgente",
++    "total": 0,
++    "requester": "Ricardo Souza (Manual)",
++    "items": [
+       {
+-        "id": "b66c4be9-0174-4e8a-81a0-5edf5df44b87",
+-        "action": "status_changed",
+-        "by": "Administrador",
+-        "at": "2026-02-09T03:53:36.317Z",
+-        "status": "aprovado",
+-        "description": "Aprovação financeira e operacional concluída"
+-      },
++        "sku": "SKU-000905",
++        "name": "PARA-CHOQUE TRASEIRO",
++        "qty": 1,
++        "price": 0
++      }
++    ],
++    "plate": "TSN-9G18",
++    "cost_center": "DIRETORIA-ADM",
++    "request_date": "2026-02-11T22:12:48.012Z",
++    "approval_history": [
+       {
+-        "id": "fbf385ac-3448-4b12-b724-e0d71d21f706",
++        "id": "d5678992-25af-444d-a7e5-cbd618666616",
+         "action": "status_changed",
+         "by": "Administrador",
+-        "at": "2026-02-09T03:53:39.580Z",
+-        "status": "enviado",
+-        "description": "Pedido enviado ao fornecedor (Nº ddd)"
++        "at": "2026-02-11T22:12:48.012Z",
++        "status": "requisicao",
++        "description": "Pedido criado via painel LogiWMS"
+       }
+     ],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-12-04T03:29:08.180Z"
++    "warehouse_id": "ARMZ28"
+   },
+   {
+-    "id": "PO-TEST-00050",
+-    "vendor": "Fornecedor 4",
+-    "request_date": "2025-10-27T03:29:08.180Z",
+-    "status": "cotacao",
++    "id": "PO-2026-1888",
++    "vendor": "A definir via cotações",
++    "status": "requisicao",
+     "priority": "normal",
+-    "total": 1100,
+-    "requester": "Comprador Teste",
++    "total": 0,
++    "requester": "Ricardo Souza (Manual)",
+     "items": [
+       {
+-        "sku": "SKU-000049",
+-        "name": "Item Teste 49",
+-        "qty": 11,
+-        "price": 100
++        "sku": "SKU-000905",
++        "name": "PARA-CHOQUE TRASEIRO",
++        "qty": 1,
++        "price": 0
+       }
+     ],
+-    "quotes": [],
+-    "selected_quote_id": null,
+-    "sent_to_vendor_at": null,
+-    "received_at": null,
+-    "quotes_added_at": null,
+-    "approved_at": null,
+-    "rejected_at": null,
+-    "vendor_order_number": "VN-100050",
+-    "approval_history": [],
+-    "cost_center": "OPS-CD",
+-    "warehouse_id": "ARMZ28",
+-    "created_at": "2025-09-17T03:29:08.180Z"
+-  },
+-  {
+-    "id": "PO-REC-1770523099557",
+-    "vendor": "Fornecedor Teste",
+-    "request_date": "2026-02-08T03:58:19.595Z",
+-    "status": "recebido",
+-    "priority": "normal",
+-    "total": 100,
+-    "requester": "Teste",
+-    "items": [
++    "plate": "TSN-9G18",
++    "cost_center": "DIRETORIA-ADM",
++    "request_date": "2026-02-11T22:19:19.132Z",
++    "approval_history": [
+       {
+-        "sku": "SKU-REC-1770523099557",
+-        "name": "Item Recebimento Teste",
+-        "qty": 5,
+-        "price": 20
++        "id": "03826c8f-39a7-4cca-b8da-3d0c1498c79e",
++        "action": "status_changed",
++        "by": "Administrador",
++        "at": "2026-02-11T22:19:19.133Z",
++        "status": "requisicao",
++        "description": "Pedido criado via painel LogiWMS"
+       }
+     ],
+-    "quotes": [],
+-    "approval_history": [],
+-    "warehouse_id": "ARMZ28",
+-    "received_at": "2026-02-08T03:58:19.607Z"
++    "warehouse_id": "ARMZ28"
+   },
+   {
+-    "id": "AUTO-1770654411043-57",
++    "id": "PO-2026-6109",
+     "vendor": "A definir via cotações",
+-    "request_date": "2026-02-09T16:26:51.042Z",
+     "status": "requisicao",
+-    "priority": "urgente",
++    "priority": "normal",
+     "total": 0,
+-    "requester": "Norte Tech AI (Estoque Crítico)",
++    "requester": "Ricardo Souza (Manual)",
+     "items": [
+       {
+-        "sku": "SKU-000028",
+-        "name": "Item Teste 28",
+-        "qty": 8,
++        "sku": "SKU-000905",
++        "name": "PARA-CHOQUE TRASEIRO",
++        "qty": 1,
+         "price": 0
+       }
+     ],
++    "plate": "TSN-9G18",
++    "cost_center": "DIRETORIA-ADM",
++    "request_date": "2026-02-11T22:29:20.250Z",
+     "approval_history": [
+       {
+-        "id": "541ce344-172d-4c84-8cad-ed482c7ad748",
++        "id": "4657efc8-1e13-42b1-9c84-96723671fea7",
+         "action": "status_changed",
+         "by": "Administrador",
+-        "at": "2026-02-09T16:26:51.042Z",
++        "at": "2026-02-11T22:29:20.252Z",
+         "status": "requisicao",
+-        "description": "Pedido automático gerado por regra de estoque crítico"
++        "description": "Pedido criado via painel LogiWMS"
+       }
+     ],
+     "warehouse_id": "ARMZ28"
+   },
+   {
+-    "id": "AUTO-1770654411241-59",
++    "id": "PO-2026-6062",
+     "vendor": "A definir via cotações",
+-    "request_date": "2026-02-09T16:26:51.241Z",
+     "status": "requisicao",
+-    "priority": "urgente",
++    "priority": "normal",
+     "total": 0,
+-    "requester": "Norte Tech AI (Estoque Crítico)",
++    "requester": "Ricardo Souza (Manual)",
+     "items": [
+       {
+-        "sku": "SKU-000034",
+-        "name": "Item Teste 34",
+-        "qty": 94,
++        "sku": "SKU-000905",
++        "name": "PARA-CHOQUE TRASEIRO",
++        "qty": 1,
++        "price": 0
++      },
++      {
++        "sku": "SKU-000906",
++        "name": "PARABARRO",
++        "qty": 1,
++        "price": 0
++      },
++      {
++        "sku": "SKU-000914",
++        "name": "PASTILHA DE FREIO DIANTEIRA",
++        "qty": 1,
+         "price": 0
+       }
+     ],
++    "plate": "TSN-9G18",
++    "cost_center": "DIRETORIA-ADM",
++    "request_date": "2026-02-11T22:47:01.759Z",
+     "approval_history": [
+       {
+-        "id": "72438e11-5245-463c-95d9-e0a92ef21352",
++        "id": "83a79145-bf38-4206-9ec9-b4c384506370",
+         "action": "status_changed",
+         "by": "Administrador",
+-        "at": "2026-02-09T16:26:51.241Z",
++        "at": "2026-02-11T22:47:01.759Z",
+         "status": "requisicao",
+-        "description": "Pedido automático gerado por regra de estoque crítico"
++        "description": "Pedido criado via painel LogiWMS"
+       }
+     ],
+     "warehouse_id": "ARMZ28"
+   },
+   {
+-    "id": "AUTO-1770654411241-59",
++    "id": "PO-2026-2384",
+     "vendor": "A definir via cotações",
+-    "request_date": "2026-02-09T16:26:51.241Z",
+     "status": "requisicao",
+-    "priority": "urgente",
++    "priority": "normal",
+     "total": 0,
+-    "requester": "Norte Tech AI (Estoque Crítico)",
++    "requester": "Ricardo Souza (Manual)",
+     "items": [
+       {
+-        "sku": "SKU-000034",
+-        "name": "Item Teste 34",
+-        "qty": 94,
++        "sku": "SKU-000905",
++        "name": "PARA-CHOQUE TRASEIRO",
++        "qty": 1,
++        "price": 0
++      },
++      {
++        "sku": "SKU-000906",
++        "name": "PARABARRO",
++        "qty": 1,
++        "price": 0
++      },
++      {
++        "sku": "SKU-000917",
++        "name": "PISANTE PARACHOQUE TRAS. L/D 16/23 – HILUX",
++        "qty": 1,
+         "price": 0
+       }
+     ],
++    "plate": "TSN-9G18",
++    "cost_center": "DIRETORIA-ADM",
++    "request_date": "2026-02-11T22:49:44.464Z",
+     "approval_history": [
+       {
+-        "id": "72438e11-5245-463c-95d9-e0a92ef21352",
++        "id": "f3e49ead-375c-41a4-b2e5-2716433db33b",
+         "action": "status_changed",
+         "by": "Administrador",
+-        "at": "2026-02-09T16:26:51.241Z",
++        "at": "2026-02-11T22:49:44.465Z",
+         "status": "requisicao",
+-        "description": "Pedido automático gerado por regra de estoque crítico"
++        "description": "Pedido criado via painel LogiWMS"
+       }
+     ],
+     "warehouse_id": "ARMZ28"
+   },
+   {
+-    "id": "AUTO-1770654411745-366",
++    "id": "PO-2026-7788",
+     "vendor": "A definir via cotações",
+-    "request_date": "2026-02-09T16:26:51.745Z",
+     "status": "requisicao",
+-    "priority": "urgente",
++    "priority": "normal",
+     "total": 0,
+-    "requester": "Norte Tech AI (Estoque Crítico)",
++    "requester": "Ricardo Souza (Manual)",
+     "items": [
+       {
+-        "sku": "SKU-000047",
+-        "name": "Item Teste 47",
+-        "qty": 107,
++        "sku": "SKU-000905",
++        "name": "PARA-CHOQUE TRASEIRO",
++        "qty": 1,
++        "price": 0
++      },
++      {
++        "sku": "SKU-000908",
++        "name": "PARABARRO HILUX 12/15 DIANT LE",
++        "qty": 1,
++        "price": 0
++      },
++      {
++        "sku": "SKU-000911",
++        "name": "PARAFUSO COROA - BROS 160 (MOTO)",
++        "qty": 1,
+         "price": 0
+       }
+     ],
++    "plate": "TSN-9G18",
++    "cost_center": "DIRETORIA-ADM",
++    "request_date": "2026-02-11T23:14:45.372Z",
+     "approval_history": [
+       {
+-        "id": "74358825-2172-4c64-899e-244bd12765d0",
++        "id": "f3c15112-b61e-4fa4-8312-9656c2a4a379",
+         "action": "status_changed",
+         "by": "Administrador",
+-        "at": "2026-02-09T16:26:51.745Z",
++        "at": "2026-02-11T23:14:45.372Z",
+         "status": "requisicao",
+-        "description": "Pedido automático gerado por regra de estoque crítico"
++        "description": "Pedido criado via painel LogiWMS"
+       }
+     ],
+     "warehouse_id": "ARMZ28"
+   },
+   {
+-    "id": "AUTO-1770654411745-366",
++    "id": "PO-2026-1721",
+     "vendor": "A definir via cotações",
+-    "request_date": "2026-02-09T16:26:51.745Z",
+     "status": "requisicao",
+-    "priority": "urgente",
++    "priority": "normal",
+     "total": 0,
+-    "requester": "Norte Tech AI (Estoque Crítico)",
++    "requester": "Ricardo Souza (Manual)",
+     "items": [
+       {
+-        "sku": "SKU-000047",
+-        "name": "Item Teste 47",
+-        "qty": 107,
++        "sku": "SKU-000905",
++        "name": "PARA-CHOQUE TRASEIRO",
++        "qty": 1,
+         "price": 0
+       }
+     ],
++    "plate": "VAL301",
++    "cost_center": "CC-TEST",
++    "request_date": "2026-02-12T10:05:37.417Z",
+     "approval_history": [
+       {
+-        "id": "74358825-2172-4c64-899e-244bd12765d0",
++        "id": "4d2564e3-a4de-4b24-a3a2-e13e2e18ec69",
+         "action": "status_changed",
+         "by": "Administrador",
+-        "at": "2026-02-09T16:26:51.745Z",
++        "at": "2026-02-12T10:05:37.417Z",
+         "status": "requisicao",
+-        "description": "Pedido automático gerado por regra de estoque crítico"
++        "description": "Pedido criado via painel LogiWMS"
+       }
+     ],
+     "warehouse_id": "ARMZ28"

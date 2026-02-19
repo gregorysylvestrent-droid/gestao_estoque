@@ -1,0 +1,33 @@
+﻿diff --git a/utils/userAccess.ts b/utils/userAccess.ts
+index 69a8949..7c34e59 100644
+--- a/utils/userAccess.ts
++++ b/utils/userAccess.ts
+@@ -138,11 +138,26 @@ export const normalizeWorkshopAccess = (
+   rawHasWorkshopAccess: unknown,
+   role: unknown
+ ) => {
+-  if (typeof rawHasWorkshopAccess === 'boolean') return rawHasWorkshopAccess;
+-
+   if (normalizeUserRole(role) === 'admin') return true;
++  if (typeof rawHasWorkshopAccess === 'boolean') return rawHasWorkshopAccess;
+ 
+   const tokens = unique(toStringArray(rawModules).map((entry) => normalizeToken(entry)).filter(Boolean));
+   return tokens.includes('workshop') || tokens.includes('oficina');
+ };
+ 
++export const normalizeFleetAccess = (
++  rawModules: unknown,
++  rawHasFleetAccess: unknown,
++  role: unknown
++) => {
++  if (normalizeUserRole(role) === 'admin') return true;
++  if (typeof rawHasFleetAccess === 'boolean') return rawHasFleetAccess;
++
++  const tokens = unique(toStringArray(rawModules).map((entry) => normalizeToken(entry)).filter(Boolean));
++  return (
++    tokens.includes('fleet') ||
++    tokens.includes('frota') ||
++    tokens.includes('gestao_frota') ||
++    tokens.includes('gestao_de_frota')
++  );
++};

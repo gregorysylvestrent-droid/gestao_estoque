@@ -1,0 +1,698 @@
+﻿﻿import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { WorkOrder, WorkOrderType, ServiceCategory, Vehicle, ServiceItem, Mechanic, TimeLog } from '../../../types';
+import { Button } from '@/components/ui/Button';
+import { api } from '../../../api-client';
+
+// Fallback labels if not exported
+const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
+  motor: 'Motor',
+  suspensao: 'Suspensão',
+  freios: 'Freios',
+  eletrica: 'Elétrica',
+  lubrificacao: 'Lubrificação',
+  pneus: 'Pneus',
+  carroceria: 'Carroceria',
+  outros: 'Outros'
+};
+
+const WORKSHOP_UNITS = [
+  'Oficina Leve',
+  'Oficina Pesada',
+  'Oficina Interior',
+  'Oficina Lancha/Moto',
+  'Oficina Funilaria'
+];
+
+interface NewWorkOrderModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (order: Partial<WorkOrder>) => Promise<void>;
+  mechanics?: { id: string; name: string }[];
+  supervisors?: { id: string; name: string }[];
+  defaultSupervisor?: { id: string; name: string } | null;
+  vehicles?: Vehicle[];
+  initialData?: Partial<WorkOrder>;
+}
+
+export const NewWorkOrderModal: React.FC<NewWorkOrderModalProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  mechanics = [],
+  supervisors = [],
+  defaultSupervisor = null,
+  vehicles = [],
+  initialData
+}) => {
+  const [formData, setFormData] = useState<Partial<WorkOrder>>({
+    vehiclePlate: '',
+    vehicleModel: '',
+    status: 'aguardando',
+    type: 'corretiva',
+    priority: 'normal',
+    workshopUnit: '',
+    description: '',
+    estimatedHours: 0,
+    cost: {
+      labor: 0,
+      parts: 0,
+      thirdParty: 0,
+      total: 0
+    },
+    services: [],
+    parts: []
+  });
+
+  const [newService, setNewService] = useState<Partial<ServiceItem>>({
+    description: '',
+    category: 'outros',
+    estimatedHours: 1,
+    mechanicId: '',
+    mechanicName: ''
+  });
+
+  const [logs, setLogs] = useState<TimeLog[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        setFormData({
+          ...initialData,
+          status: initialData.status || 'aguardando',
+          supervisorId: initialData.supervisorId || initialData.mechanicId,
+          supervisorName: initialData.supervisorName || initialData.mechanicName,
+          workshopUnit: initialData.workshopUnit || '',
+        });
+        // Fetch logs if editing
+        if (initialData.id) {
+          api.from('work_order_logs')
+             .select('*')
+             .eq('work_order_id', initialData.id)
+             .order('timestamp', { ascending: false })
+             .then(({ data }) => {
+               if (data) setLogs(data);
+             });
+        }
+      } else {
+        const supervisorFallback = defaultSupervisor
+          ? { supervisorId: defaultSupervisor.id, supervisorName: defaultSupervisor.name }
+          : { supervisorId: '', supervisorName: '' };
+        setFormData({
+          vehiclePlate: '',
+          vehicleModel: '',
+          status: 'aguardando',
+          type: 'corretiva',
+          priority: 'normal',
+          workshopUnit: '',
+          description: '',
+          estimatedHours: 0,
+          cost: {
+            labor: 0,
+            parts: 0,
+            thirdParty: 0,
+            total: 0
+          },
+          services: [],
+          parts: [],
+          ...supervisorFallback
+        });
+      }
+    }
+  }, [isOpen, initialData, defaultSupervisor]);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [isOpen]);
+
+  const computeServiceActualHours = (service: ServiceItem) => {
+    const baseSeconds = service.actualSeconds ?? 0;
+    if (!service.isTimerActive || !service.startedAt) {
+      return baseSeconds / 3600;
+    }
+    const start = new Date(service.startedAt).getTime();
+    if (Number.isNaN(start)) {
+      return baseSeconds / 3600;
+    }
+    const extraSeconds = Math.max(0, Math.floor((now - start) / 1000));
+    return (baseSeconds + extraSeconds) / 3600;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await onSave(formData);
+      onClose();
+    } catch (error) {
+      console.error('Error saving work order:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChange = (field: keyof WorkOrder, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleVehicleChange = (plate: string) => {
+    const vehicle = vehicles.find(v => v.plate === plate);
+    setFormData(prev => ({
+      ...prev,
+      vehiclePlate: plate,
+      vehicleModel: vehicle?.model || '',
+      costCenter: vehicle?.costCenter || '',
+    }));
+  };
+
+  const handleAddService = () => {
+    if (newService.description && newService.estimatedHours) {
+      const service: ServiceItem = {
+        id: `srv-${Date.now()}`,
+        description: newService.description!,
+        category: (newService.category as ServiceCategory) || 'outros',
+        estimatedHours: Number(newService.estimatedHours),
+        completed: false,
+        mechanicId: newService.mechanicId,
+        mechanicName: newService.mechanicName
+      };
+      
+      setFormData(prev => ({
+        ...prev,
+        services: [...(prev.services || []), service],
+        estimatedHours: (prev.estimatedHours || 0) + service.estimatedHours
+      }));
+      
+      setNewService({ description: '', category: 'outros', estimatedHours: 1, mechanicId: '', mechanicName: '' });
+    }
+  };
+
+  const handleRemoveService = (serviceId: string) => {
+    setFormData(prev => {
+      const service = prev.services?.find(s => s.id === serviceId);
+      return {
+        ...prev,
+        services: prev.services?.filter(s => s.id !== serviceId),
+        estimatedHours: Math.max(0, (prev.estimatedHours || 0) - (service?.estimatedHours || 0))
+      };
+    });
+  };
+
+  const handleUpdateService = (serviceId: string, field: keyof ServiceItem, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      services: prev.services?.map(s => {
+        if (s.id === serviceId) {
+          const updatedService = { ...s, [field]: value };
+          if (field === 'mechanicId') {
+            const mechanic = mechanics.find(m => m.id === value);
+            updatedService.mechanicName = mechanic?.name;
+          }
+          return updatedService;
+        }
+        return s;
+      })
+    }));
+  };
+
+  const { mechanicStats, categoryStats } = React.useMemo(() => {
+    if (!formData.services) return { mechanicStats: [], categoryStats: [] };
+    
+    const mStats = new Map<string, { 
+      name: string; 
+      estimated: number; 
+      actual: number; 
+      serviceCount: number 
+    }>();
+
+    const cStats = new Map<string, {
+      name: string;
+      estimated: number;
+      actual: number;
+      serviceCount: number;
+    }>();
+
+    formData.services.forEach(service => {
+      // Mechanic Stats
+      const mechanicId = service.mechanicId || 'unassigned';
+      const mechanicName = service.mechanicName || 'Não atribuído';
+      
+      const mCurrent = mStats.get(mechanicId) || { 
+        name: mechanicName, 
+        estimated: 0, 
+        actual: 0, 
+        serviceCount: 0 
+      };
+
+      mCurrent.estimated += service.estimatedHours || 0;
+      const serviceActual = computeServiceActualHours(service);
+      mCurrent.actual += serviceActual || 0;
+      mCurrent.serviceCount += 1;
+      mStats.set(mechanicId, mCurrent);
+
+      // Category Stats
+      const category = service.category;
+      const cCurrent = cStats.get(category) || {
+        name: SERVICE_CATEGORY_LABELS[category] || category,
+        estimated: 0,
+        actual: 0,
+        serviceCount: 0
+      };
+      cCurrent.estimated += service.estimatedHours || 0;
+      const categoryActual = computeServiceActualHours(service);
+      cCurrent.actual += categoryActual || 0;
+      cCurrent.serviceCount += 1;
+      cStats.set(category, cCurrent);
+    });
+
+    return { 
+      mechanicStats: Array.from(mStats.values()),
+      categoryStats: Array.from(cStats.values())
+    };
+  }, [formData.services, now]);
+
+  if (!isOpen) return null;
+
+  const modalContent = (
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div
+        className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            {initialData ? 'Editar Ordem de Serviço' : 'Nova Ordem de Serviço'}
+          </h2>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Placa do Veículo *
+              </label>
+              <select
+                required
+                value={formData.vehiclePlate}
+                onChange={(e) => handleVehicleChange(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecione um veículo...</option>
+                {vehicles.map(vehicle => (
+                  <option key={vehicle.plate} value={vehicle.plate}>
+                    {vehicle.plate} / {vehicle.model} / {vehicle.costCenter || 'N/A'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Modelo
+              </label>
+              <input
+                type="text"
+                value={formData.vehicleModel}
+                readOnly
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                placeholder="Selecionado automaticamente"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Centro de Custo
+              </label>
+              <input
+                type="text"
+                value={formData.costCenter || ''}
+                readOnly
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                placeholder="Selecionado automaticamente"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Tipo de Serviço *
+              </label>
+              <select
+                required
+                value={formData.type}
+                onChange={(e) => handleChange('type', e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="corretiva">Corretiva</option>
+                <option value="preventiva">Preventiva</option>
+                <option value="urgente">Urgente</option>
+                <option value="revisao">Revisão</option>
+                <option value="garantia">Garantia</option>
+                <option value="tav">TAV</option>
+                <option value="terceiros">Terceiros</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Prioridade *
+              </label>
+              <select
+                required
+                value={formData.priority}
+                onChange={(e) => handleChange('priority', e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="baixa">Baixa</option>
+                <option value="normal">Normal</option>
+                <option value="alta">Alta</option>
+                <option value="urgente">Urgente</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Oficina *
+            </label>
+            <select
+              required
+              value={formData.workshopUnit || ''}
+              onChange={(e) => handleChange('workshopUnit', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Selecione a oficina...</option>
+              {WORKSHOP_UNITS.map((unit) => (
+                <option key={unit} value={unit}>{unit}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Services Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2">
+              Serviços e Mão de Obra
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg">
+              <div className="md:col-span-4">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Descrição do Serviço</label>
+                <input
+                  type="text"
+                  value={newService.description}
+                  onChange={(e) => setNewService(prev => ({ ...prev, description: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700"
+                  placeholder="Ex: Troca de Óleo"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Categoria</label>
+                <select
+                  value={newService.category}
+                  onChange={(e) => setNewService(prev => ({ ...prev, category: e.target.value as ServiceCategory }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700"
+                >
+                  {Object.entries(SERVICE_CATEGORY_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Hrs Est.</label>
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={newService.estimatedHours}
+                  onChange={(e) => setNewService(prev => ({ ...prev, estimatedHours: Number(e.target.value) }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700"
+                />
+              </div>
+              <div className="md:col-span-3">
+                <label className="block text-xs font-medium text-slate-500 mb-1">Mecânico</label>
+                <select
+                  value={newService.mechanicId || ''}
+                  onChange={(e) => {
+                    const mechanic = mechanics.find(m => m.id === e.target.value);
+                    setNewService(prev => ({ 
+                      ...prev, 
+                      mechanicId: e.target.value,
+                      mechanicName: mechanic?.name 
+                    }));
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700"
+                >
+                  <option value="">Selecione...</option>
+                  {mechanics.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-1">
+                <Button type="button" onClick={handleAddService} className="w-full h-[38px] flex items-center justify-center p-0">+</Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {formData.services?.map(service => (
+                <div key={service.id} className="flex flex-col gap-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="font-medium text-slate-900 dark:text-white" title={service.description}>
+                        {service.description}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {SERVICE_CATEGORY_LABELS[service.category]} â€¢ Est: {service.estimatedHours}h
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveService(service.id)}
+                      className="text-red-500 hover:text-red-700 ml-2 p-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 mt-2 border-t border-slate-100 dark:border-slate-700 pt-2">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Mecânico Responsável</label>
+                      <select
+                        value={service.mechanicId || ''}
+                        onChange={(e) => handleUpdateService(service.id, 'mechanicId', e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs border border-slate-300 dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white"
+                      >
+                        <option value="">Não atribuído</option>
+                        {mechanics.map(m => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Tempo Real (h)</label>
+                      <div className="w-full px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-mono">
+                        {computeServiceActualHours(service).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(!formData.services || formData.services.length === 0) && (
+                <p className="text-sm text-slate-400 text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
+                  Nenhum serviço adicionado. Adicione serviços acima.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Mecânico Responsável (Supervisor)
+            </label>
+            <select
+              value={formData.supervisorId || ''}
+              onChange={(e) => {
+                const supervisor = supervisors.find(m => m.id === e.target.value);
+                handleChange('supervisorId', e.target.value);
+                handleChange('supervisorName', supervisor?.name);
+              }}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Selecione um supervisor...</option>
+              {supervisors.map(m => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Descrição do Problema *
+            </label>
+            <textarea
+              required
+              value={formData.description}
+              onChange={(e) => handleChange('description', e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              placeholder="Descreva detalhadamente o problema relatado..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={isLoading}
+            >
+              {initialData ? 'Salvar Alterações' : 'Criar Ordem de Serviço'}
+            </Button>
+          </div>
+        </form>
+
+        {/* Productivity Stats Section */}
+        {initialData && (mechanicStats.length > 0 || categoryStats.length > 0) && (
+          <div className="p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4">
+              Análise de Produtividade
+            </h3>
+            
+            <div className="space-y-6">
+              {/* By Mechanic */}
+              {mechanicStats.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">Por Mecânico</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {mechanicStats.map((stat, idx) => (
+                      <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-medium text-sm">
+                            {stat.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-medium text-slate-900 dark:text-white text-sm">{stat.name}</div>
+                            <div className="text-xs text-slate-500">{stat.serviceCount} serviço(s) atribuído(s)</div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded border border-slate-100 dark:border-slate-700">
+                            <div className="text-xs text-slate-500 mb-0.5">Estimado</div>
+                            <div className="font-mono text-sm font-medium text-slate-700 dark:text-slate-300">{stat.estimated.toFixed(1)}h</div>
+                          </div>
+                          <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded border border-slate-100 dark:border-slate-700">
+                            <div className="text-xs text-slate-500 mb-0.5">Realizado</div>
+                            <div className={`font-mono text-sm font-medium ${stat.actual > stat.estimated ? 'text-red-500' : 'text-emerald-500'}`}>
+                              {stat.actual.toFixed(1)}h
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* By Category */}
+              {categoryStats.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">Por Tipo de Serviço</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {categoryStats.map((stat, idx) => (
+                      <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-medium text-sm">
+                            {stat.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-medium text-slate-900 dark:text-white text-sm">{stat.name}</div>
+                            <div className="text-xs text-slate-500">{stat.serviceCount} serviço(s)</div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded border border-slate-100 dark:border-slate-700">
+                            <div className="text-xs text-slate-500 mb-0.5">Estimado</div>
+                            <div className="font-mono text-sm font-medium text-slate-700 dark:text-slate-300">{stat.estimated.toFixed(1)}h</div>
+                          </div>
+                          <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded border border-slate-100 dark:border-slate-700">
+                            <div className="text-xs text-slate-500 mb-0.5">Realizado</div>
+                            <div className={`font-mono text-sm font-medium ${stat.actual > stat.estimated ? 'text-red-500' : 'text-emerald-500'}`}>
+                              {stat.actual.toFixed(1)}h
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Time Logs Section */}
+        {initialData && logs.length > 0 && (
+          <div className="p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 rounded-b-2xl">
+            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-4">
+              Histórico de Atividades e Tempo
+            </h3>
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {logs.map(log => (
+                <div key={log.id} className="flex items-start gap-3 text-sm p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="mt-1">
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-slate-900 dark:text-white">
+                        Mudança de Status
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {new Date(log.timestamp).toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-400 mt-1">
+                      De <span className="font-medium">{log.previousStatus}</span> para <span className="font-medium">{log.newStatus}</span>
+                    </p>
+                    {log.durationSeconds && log.durationSeconds > 0 && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Duração no status anterior: <span className="font-mono font-medium">{Math.floor(log.durationSeconds / 60)}m {log.durationSeconds % 60}s</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (typeof document === 'undefined') {
+    return modalContent;
+  }
+
+  return createPortal(modalContent, document.body);
+};
+
+

@@ -1,0 +1,59 @@
+﻿diff --git a/pages/workshop/InspectionChecklistEditor.tsx b/pages/workshop/InspectionChecklistEditor.tsx
+index 8a87bb2..d8e0fd7 100644
+--- a/pages/workshop/InspectionChecklistEditor.tsx
++++ b/pages/workshop/InspectionChecklistEditor.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++﻿import React, { useState } from 'react';
+ import { InspectionTemplate, ChecklistSection, ChecklistField } from '../../types';
+ 
+ interface InspectionChecklistEditorProps {
+@@ -37,11 +37,11 @@ export const InspectionChecklistEditor: React.FC<InspectionChecklistEditorProps>
+   const fieldTypes = [
+     { value: 'text', label: 'Texto', icon: 'T' },
+     { value: 'number', label: 'Número', icon: '#' },
+-    { value: 'select', label: 'Seleção', icon: '☰' },
+-    { value: 'date', label: 'Data', icon: '📅' },
+-    { value: 'photo', label: 'Foto', icon: '📷' },
+-    { value: 'signature', label: 'Assinatura', icon: '✍️' },
+-    { value: 'checkbox', label: 'Checkbox', icon: '☐' }
++    { value: 'select', label: 'Seleção', icon: 'â˜°' },
++    { value: 'date', label: 'Data', icon: 'ðŸ“…' },
++    { value: 'photo', label: 'Foto', icon: 'ðŸ“·' },
++    { value: 'signature', label: 'Assinatura', icon: 'âœï¸' },
++    { value: 'checkbox', label: 'Checkbox', icon: 'â˜' }
+   ];
+ 
+   const addSection = () => {
+@@ -169,7 +169,7 @@ export const InspectionChecklistEditor: React.FC<InspectionChecklistEditorProps>
+                 </div>
+                 <span className="text-sm font-medium text-blue-900 dark:text-blue-300">Inspeção Preventiva FH 540</span>
+               </div>
+-              <p className="text-xs text-slate-500 mt-1">v2.4 • Atualizado há 2 dias</p>
++              <p className="text-xs text-slate-500 mt-1">v2.4 â€¢ Atualizado há 2 dias</p>
+             </div>
+             <div className="p-3 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700">
+               <div className="flex items-center gap-2">
+@@ -180,7 +180,7 @@ export const InspectionChecklistEditor: React.FC<InspectionChecklistEditorProps>
+                 </div>
+                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Checklist de Pneus & Rodas</span>
+               </div>
+-              <p className="text-xs text-slate-500 mt-1">v1.8 • Atualizado há 1 sem.</p>
++              <p className="text-xs text-slate-500 mt-1">v1.8 â€¢ Atualizado há 1 sem.</p>
+             </div>
+             <div className="p-3 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700">
+               <div className="flex items-center gap-2">
+@@ -191,7 +191,7 @@ export const InspectionChecklistEditor: React.FC<InspectionChecklistEditorProps>
+                 </div>
+                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Controle de Abastecimento</span>
+               </div>
+-              <p className="text-xs text-slate-500 mt-1">v1.0 • Atualizado há 1 mês</p>
++              <p className="text-xs text-slate-500 mt-1">v1.0 â€¢ Atualizado há 1 mês</p>
+             </div>
+           </div>
+           <button className="w-full mt-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center gap-2">
+@@ -456,3 +456,4 @@ export const InspectionChecklistEditor: React.FC<InspectionChecklistEditorProps>
+ };
+ 
+ export default InspectionChecklistEditor;
++

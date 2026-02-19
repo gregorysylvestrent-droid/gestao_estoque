@@ -1,0 +1,11 @@
+﻿diff --git a/scripts/reset-local-dev.ps1 b/scripts/reset-local-dev.ps1
+index 4a542da..9491bcb 100644
+--- a/scripts/reset-local-dev.ps1
++++ b/scripts/reset-local-dev.ps1
+@@ -1,5 +1,5 @@
+ param(
+-  [int[]]$Ports = @(3000, 3001),
++  [int[]]$Ports = @(3000, 3001, 3002),
+   [switch]$KeepFrontend = $false
+ )
+ 

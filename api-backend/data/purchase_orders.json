@@ -1,0 +1,32 @@
+[
+  {
+    "id": "PO-2026-3901",
+    "vendor": "A definir via cotações",
+    "status": "requisicao",
+    "priority": "normal",
+    "total": 0,
+    "requester": "Ricardo Souza (Manual)",
+    "items": [
+      {
+        "sku": "SKU-000905",
+        "name": "PARA-CHOQUE TRASEIRO",
+        "qty": 1,
+        "price": 0
+      }
+    ],
+    "plate": "ASD",
+    "cost_center": "asd",
+    "request_date": "2026-02-12T21:47:11.453Z",
+    "approval_history": [
+      {
+        "id": "27d7e4fd-06db-4898-9e99-b1d607aee589",
+        "action": "status_changed",
+        "by": "Administrador",
+        "at": "2026-02-12T21:47:11.453Z",
+        "status": "requisicao",
+        "description": "Pedido criado via painel LogiWMS"
+      }
+    ],
+    "warehouse_id": "ARMZ28"
+  }
+]

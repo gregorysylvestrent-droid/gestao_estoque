@@ -1,0 +1,80 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment variables (IMPORTANT: Never commit these)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# API Backend
+api-backend/node_modules/
+api-backend/dist/
+api-backend/.env
+api-backend/data-backups/
+api-backend/reports/
+api-backend/data/movements.json
+api-backend/data/audit_logs.json
+api-backend/data/notifications.json
+
+# Development artifacts
+.gemini/
+brain/
+.cache/
+
+# Skills and submodules (not needed)
+antigravity-awesome-skills/
+
+# Test files (temporary)
+fetch_test.*
+test-*.js
+metadata.json
+playwright-report/
+test-results/
+
+# AWS local deployment artifacts (never commit)
+infra/aws/keys/
+infra/aws/.last-deploy-vars.json
+infra/aws/.last-ssm-command-id.txt
+infra/aws/.last-ssm-update-command-id.txt
+infra/aws/.last-ssm-*-command-id.txt
+infra/aws/ssm-params.json
+infra/aws/ssm-oneoff.json
+infra/aws/ssm-*.json
+infra/aws/deploy-output.json
+
+# OS files
+Thumbs.db
+
+# Package manager lock files (optional - uncomment if needed)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

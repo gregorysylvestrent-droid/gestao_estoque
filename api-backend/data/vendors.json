@@ -1,0 +1,148 @@
+[
+  {
+    "id": "V-00011",
+    "name": "Fornecedor 11",
+    "contact": "Contato 11",
+    "email": "fornecedor11@example.com",
+    "cnpj": "10000000000011",
+    "category": "Ferramentas",
+    "status": "Ativo",
+    "created_at": "2025-01-19T03:28:28.748Z"
+  },
+  {
+    "id": "V-00023",
+    "name": "Fornecedor 23",
+    "contact": "Contato 23",
+    "email": "fornecedor23@example.com",
+    "cnpj": "10000000000023",
+    "category": "Pecas",
+    "status": "Ativo",
+    "created_at": "2025-01-31T03:28:28.748Z"
+  },
+  {
+    "id": "V-00029",
+    "name": "Fornecedor 29",
+    "contact": "Contato 29",
+    "email": "fornecedor29@example.com",
+    "cnpj": "10000000000029",
+    "category": "Pecas",
+    "status": "Ativo",
+    "created_at": "2025-01-20T03:28:28.748Z"
+  },
+  {
+    "id": "V-00036",
+    "name": "Fornecedor 36",
+    "contact": "Contato 36",
+    "email": "fornecedor36@example.com",
+    "cnpj": "10000000000036",
+    "category": "Pecas",
+    "status": "Ativo",
+    "created_at": "2025-01-10T03:28:28.748Z"
+  },
+  {
+    "name": "Norte Tech Servicos em Energia LTDA -",
+    "cnpj": "33.822.061/0001-93",
+    "contact": "99999999",
+    "id": "1770650610020",
+    "status": "Ativo"
+  },
+  {
+    "id": "VEN-TEST-AUTO-1770882838231",
+    "id_fornecedor": 999999,
+    "razao_social": "Fornecedor Auto ID",
+    "nome_fantasia": "Auto ID",
+    "cnpj": "32345678000100",
+    "telefone": "(11) 98888-7777",
+    "status": "Ativo",
+    "name": "Fornecedor Auto ID",
+    "contact": "(11) 98888-7777"
+  },
+  {
+    "id": "VEN-TEST-AUTO-1770883081140",
+    "razao_social": "Fornecedor Auto ID 1770883081140",
+    "nome_fantasia": "Auto ID",
+    "cnpj": "97088308114003",
+    "telefone": "(11) 98888-7777",
+    "status": "Ativo",
+    "name": "Fornecedor Auto ID 1770883081140",
+    "contact": "(11) 98888-7777",
+    "id_fornecedor": 1000000
+  },
+  {
+    "id": "VEN-TEST-AUTO-1770883150048",
+    "razao_social": "Fornecedor Auto ID 1770883150048",
+    "nome_fantasia": "Auto ID",
+    "cnpj": "97088315004838",
+    "telefone": "(11) 98888-7777",
+    "status": "Ativo",
+    "name": "Fornecedor Auto ID 1770883150048",
+    "contact": "(11) 98888-7777",
+    "id_fornecedor": 1000001
+  },
+  {
+    "id": "VEN-TEST-AUTO-1770884630310",
+    "razao_social": "Fornecedor Auto ID 1770884630310",
+    "nome_fantasia": "Auto ID",
+    "cnpj": "97088463031078",
+    "telefone": "(11) 98888-7777",
+    "status": "Ativo",
+    "name": "Fornecedor Auto ID 1770884630310",
+    "contact": "(11) 98888-7777",
+    "id_fornecedor": 1000002
+  },
+  {
+    "id": "VEN-TEST-AUTO-1770886021396",
+    "razao_social": "Fornecedor Auto ID 1770886021396",
+    "nome_fantasia": "Auto ID",
+    "cnpj": "97088602139697",
+    "telefone": "(11) 98888-7777",
+    "status": "Ativo",
+    "name": "Fornecedor Auto ID 1770886021396",
+    "contact": "(11) 98888-7777",
+    "id_fornecedor": 1000003
+  },
+  {
+    "id": "VEN-TEST-AUTO-1770932107580",
+    "razao_social": "Fornecedor Auto ID 1770932107580",
+    "nome_fantasia": "Auto ID",
+    "cnpj": "97093210758006",
+    "telefone": "(11) 98888-7777",
+    "status": "Ativo",
+    "name": "Fornecedor Auto ID 1770932107580",
+    "contact": "(11) 98888-7777",
+    "id_fornecedor": 1000004
+  },
+  {
+    "id": "VEN-TEST-AUTO-1770932121486",
+    "razao_social": "Fornecedor Auto ID 1770932121486",
+    "nome_fantasia": "Auto ID",
+    "cnpj": "97093212148604",
+    "telefone": "(11) 98888-7777",
+    "status": "Ativo",
+    "name": "Fornecedor Auto ID 1770932121486",
+    "contact": "(11) 98888-7777",
+    "id_fornecedor": 1000005
+  },
+  {
+    "id": "VEN-TEST-AUTO-1770932160490",
+    "razao_social": "Fornecedor Auto ID 1770932160490",
+    "nome_fantasia": "Auto ID",
+    "cnpj": "97093216049007",
+    "telefone": "(11) 98888-7777",
+    "status": "Ativo",
+    "name": "Fornecedor Auto ID 1770932160490",
+    "contact": "(11) 98888-7777",
+    "id_fornecedor": 1000006
+  },
+  {
+    "id": "VEN-TEST-AUTO-1770932217036",
+    "razao_social": "Fornecedor Auto ID 1770932217036",
+    "nome_fantasia": "Auto ID",
+    "cnpj": "97093221703607",
+    "telefone": "(11) 98888-7777",
+    "status": "Ativo",
+    "name": "Fornecedor Auto ID 1770932217036",
+    "contact": "(11) 98888-7777",
+    "id_fornecedor": 1000007
+  }
+]

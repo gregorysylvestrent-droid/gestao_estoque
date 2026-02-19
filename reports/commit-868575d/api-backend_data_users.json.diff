@@ -1,0 +1,38 @@
+﻿diff --git a/api-backend/data/users.json b/api-backend/data/users.json
+index 0c306f3..9b1d67a 100644
+--- a/api-backend/data/users.json
++++ b/api-backend/data/users.json
+@@ -5,25 +5,27 @@
+     "email": "admin@nortetech.com",
+     "role": "admin",
+     "status": "Ativo",
++    "last_access": "2026-02-12T13:58:00.000Z",
+     "avatar": "https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff",
+-    "password": "pbkdf2$310000$c69ffaeaeaf017b7f94270ab3a61d55b$8d5b4fd072c9044b957eb432bdf26f03ff1b50a7859ca7b370b0f896356f356a",
++    "password": "pbkdf2$310000$5dc96dcdd9ccb0c17fabf9eb844c372b$9d8542eea21729337599f7321d0c1a576012b1add72d9d8c8c271b889bad9def",
+     "modules": [
+       "dashboard",
+       "recebimento",
+       "movimentacoes",
+-      "auditoria_geral",
+       "estoque",
+       "expedicao",
+       "inventario_ciclico",
+       "compras",
+       "cadastro",
+       "relatorios",
+-      "configuracoes"
++      "configuracoes",
++      "workshop",
++      "fleet"
+     ],
+     "allowed_warehouses": [
+       "ARMZ28",
+       "ARMZ33"
+     ],
+-    "created_at": "2026-02-08T02:58:10.088Z"
++    "created_at": "2026-02-12T13:58:00.000Z"
+   }
+-]
++]
+\ No newline at end of file

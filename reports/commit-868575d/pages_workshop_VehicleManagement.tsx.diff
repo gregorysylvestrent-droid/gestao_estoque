@@ -1,0 +1,246 @@
+﻿diff --git a/pages/workshop/VehicleManagement.tsx b/pages/workshop/VehicleManagement.tsx
+index f0f4de5..5baca69 100644
+--- a/pages/workshop/VehicleManagement.tsx
++++ b/pages/workshop/VehicleManagement.tsx
+@@ -1,4 +1,4 @@
+-﻿import React, { useState } from 'react';
++﻿﻿import React, { useState } from 'react';
+ import * as XLSX from 'xlsx';
+ import { Vehicle, VehicleDetail, InventoryItem } from '../../types';
+ 
+@@ -36,7 +36,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+     plate: '',
+     model: '',
+     type: 'PROPRIO',
+-    status: 'Disponivel',
++    status: 'Disponível',
+     costCenter: ''
+   });
+ 
+@@ -77,10 +77,10 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+ 
+   const normalizeStatus = (value: unknown): string => {
+     const token = normalizeHeader(value);
+-    if (token.includes('vencid') || token.includes('manut') || token.includes('oficina')) return 'Manutencao';
++    if (token.includes('vencid') || token.includes('manut') || token.includes('oficina')) return 'Manutenção';
+     if (token.includes('viagem') || token.includes('transito')) return 'Em Viagem';
+     if (token.includes('inativ') || token.includes('bloque')) return 'Inativo';
+-    return 'Disponivel';
++    return 'Disponível';
+   };
+ 
+   const getRowValue = (row: Record<string, unknown>, aliases: string[]) => {
+@@ -109,7 +109,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+         plate: '',
+         model: '',
+         type: 'PROPRIO',
+-        status: 'Disponivel',
++        status: 'Disponível',
+         costCenter: ''
+       });
+       setIsEditing(false);
+@@ -250,20 +250,20 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+       );
+ 
+       if (!plate || !model) {
+-        errors.push(`Linha ${rowNumber}: placa e modelo sao obrigatorios`);
++        errors.push(`Linha ${rowNumber}: placa e modelo são obrigatórios`);
+         return;
+       }
+ 
+       if (!isValidPlate(plate)) {
+-        errors.push(`Linha ${rowNumber}: formato de placa invalido "${plate}"`);
++        errors.push(`Linha ${rowNumber}: formato de placa inválido "${plate}"`);
+         return;
+       }
+ 
+       parsedByPlate.set(plate, {
+         plate,
+         model,
+-        type,
+-        status,
++        type: type as Vehicle['type'],
++        status: status as Vehicle['status'],
+         costCenter: costCenter || 'OPS-CD',
+         lastMaintenance: lastMaintenance || new Date().toLocaleDateString('pt-BR'),
+       });
+@@ -360,7 +360,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+         parseImportData(content);
+       } catch {
+         setImportPreview([]);
+-        setImportErrors(['Falha ao ler arquivo. Use XLSX ou CSV com colunas validas.']);
++        setImportErrors(['Falha ao ler arquivo. Use XLSX ou CSV com colunas válidas.']);
+       }
+     };
+ 
+@@ -393,9 +393,9 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+       {/* Header */}
+       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+         <div>
+-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">GestÃ£o de Frota</h2>
++          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Gestão de Frota</h2>
+           <p className="text-slate-600 dark:text-slate-400 mt-1">
+-            Cadastre veÃ­culos e solicite peÃ§as diretamente do armazÃ©m
++            Cadastre veículos e solicite peças diretamente do armazém
+           </p>
+         </div>
+         <div className="flex gap-2">
+@@ -426,7 +426,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+             </svg>
+-            Novo VeÃ­culo
++            Novo Veículo
+           </button>
+         </div>
+       </div>
+@@ -482,7 +482,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+                 </div>
+                 {detail && (
+                   <div className="flex justify-between text-sm">
+-                    <span className="text-slate-500 dark:text-slate-400">PrÃ³x. ManutenÃ§Ã£o:</span>
++                    <span className="text-slate-500 dark:text-slate-400">Próx. Manutenção:</span>
+                     <span className="text-slate-700 dark:text-slate-300">
+                       {detail.nextServiceDate || (detail.nextServiceKm ? `${detail.nextServiceKm.toLocaleString()} km` : 'N/A')}
+                     </span>
+@@ -504,7 +504,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                   </svg>
+-                  Solicitar PeÃ§as
++                  Solicitar Peças
+                 </button>
+               </div>
+             </div>
+@@ -520,10 +520,10 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+             </svg>
+           </div>
+-          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Nenhum veÃ­culo encontrado</h3>
++          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Nenhum veículo encontrado</h3>
+           <p className="text-slate-500 dark:text-slate-400">
+             {searchTerm ? 'Tente ajustar sua busca ou ' : ''}
+-            cadastre um novo veÃ­culo para comeÃ§ar.
++            cadastre um novo veículo para começar.
+           </p>
+         </div>
+       )}
+@@ -534,7 +534,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+-                {isEditing ? 'Editar VeÃ­culo' : 'Novo VeÃ­culo'}
++                {isEditing ? 'Editar Veículo' : 'Novo Veículo'}
+               </h3>
+             </div>
+             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+@@ -574,11 +574,11 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+                     onChange={(e) => setFormData({ ...formData, type: e.target.value as Vehicle['type'] })}
+                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   >
+-                    <option value="PROPRIO">Proprio</option>
++                    <option value="PROPRIO">Próprio</option>
+                     <option value="TERCEIRO">Terceiro</option>
+                     <option value="ALUGADO">Alugado</option>
+                     <option value="IMPLEMENTO">Implemento</option>
+-                    <option value="EMBARCACAO">Embarcacao</option>
++                    <option value="EMBARCACAO">Embarcação</option>
+                   </select>
+                 </div>
+                 <div>
+@@ -590,9 +590,9 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+                     onChange={(e) => setFormData({ ...formData, status: e.target.value as Vehicle['status'] })}
+                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   >
+-                    <option value="Disponivel">Disponivel</option>
++                    <option value="Disponível">Disponível</option>
+                     <option value="Em Viagem">Em Viagem</option>
+-                    <option value="Manutencao">Manutencao</option>
++                    <option value="Manutenção">Manutenção</option>
+                     <option value="Inativo">Inativo</option>
+                   </select>
+                 </div>
+@@ -635,10 +635,10 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+-                Solicitar PeÃ§as - {selectedVehicle.plate}
++                Solicitar Peças - {selectedVehicle.plate}
+               </h3>
+               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+-                Selecione os itens do armazÃ©m para solicitar para este veÃ­culo
++                Selecione os itens do armazém para solicitar para este veículo
+               </p>
+             </div>
+             <div className="p-6 space-y-4">
+@@ -647,7 +647,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div>
+                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+-                      Item do ArmazÃ©m
++                      Item do Armazém
+                     </label>
+                     <select
+                       value={selectedInventoryItem?.sku || ''}
+@@ -701,9 +701,9 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+                       <thead className="bg-slate-50 dark:bg-slate-900/50">
+                         <tr>
+                           <th className="px-4 py-2 text-left text-slate-700 dark:text-slate-300">SKU</th>
+-                          <th className="px-4 py-2 text-left text-slate-700 dark:text-slate-300">DescriÃ§Ã£o</th>
++                          <th className="px-4 py-2 text-left text-slate-700 dark:text-slate-300">Descrição</th>
+                           <th className="px-4 py-2 text-center text-slate-700 dark:text-slate-300">Qtd</th>
+-                          <th className="px-4 py-2 text-center text-slate-700 dark:text-slate-300">AÃ§Ã£o</th>
++                          <th className="px-4 py-2 text-center text-slate-700 dark:text-slate-300">Ação</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+@@ -731,7 +731,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+               ) : (
+                 <div className="text-center py-8 bg-slate-50 dark:bg-slate-900/50 rounded-xl">
+                   <p className="text-slate-500 dark:text-slate-400">
+-                    Nenhum item adicionado. Selecione itens do armazÃ©m acima.
++                    Nenhum item adicionado. Selecione itens do armazém acima.
+                   </p>
+                 </div>
+               )}
+@@ -753,7 +753,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                   </svg>
+-                  Enviar SolicitaÃ§Ã£o SA
++                  Enviar Solicitação SA
+                 </button>
+               </div>
+             </div>
+@@ -831,7 +831,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+               {importPreview.length > 0 && (
+                 <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4">
+                   <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+-                    PrÃ©-visualizaÃ§Ã£o ({importPreview.length} veÃ­culos):
++                    Pré-visualização ({importPreview.length} veículos):
+                   </h4>
+                   <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+                     <table className="w-full text-sm">
+@@ -855,7 +855,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+                         {importPreview.length > 10 && (
+                           <tr>
+                             <td colSpan={4} className="px-3 py-2 text-center text-slate-500 dark:text-slate-400 italic">
+-                              ... e mais {importPreview.length - 10} veÃ­culos
++                              ... e mais {importPreview.length - 10} veículos
+                             </td>
+                           </tr>
+                         )}
+@@ -874,7 +874,7 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+                   <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 max-h-32 overflow-y-auto">
+                     {importErrors.map((error, index) => (
+                       <li key={index} className="flex items-start gap-2">
+-                        <span className="text-red-500">â€¢</span>
++                        <span className="text-red-500">ââ‚¬¢</span>
+                         {error}
+                       </li>
+                     ))}
+@@ -917,3 +917,4 @@ export const VehicleManagement: React.FC<VehicleManagementProps> = ({
+ };
+ 
+ 
++

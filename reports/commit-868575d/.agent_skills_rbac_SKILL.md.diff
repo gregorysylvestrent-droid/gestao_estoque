@@ -1,0 +1,48 @@
+﻿diff --git a/.agent/skills/rbac/SKILL.md b/.agent/skills/rbac/SKILL.md
+new file mode 100644
+index 0000000..aa05b7a
+--- /dev/null
++++ b/.agent/skills/rbac/SKILL.md
+@@ -0,0 +1,42 @@
++---
++name: rbac
++description: Define e aplica RBAC (papéis/permissões). Invoque ao proteger rotas/módulos e ocultar UI conforme acesso.
++---
++
++# RBAC Skill (Role-Based Access Control)
++
++Esta skill padroniza o controle de acesso por papéis e permissões no backend Express e no frontend React do LogiWMS-Pro.
++
++## Modelo de Dados
++- Usuário possui um ou mais papéis (roles), ex: `admin`, `compras`, `expedicao`, `auditoria`.
++- Cada papel mapeia permissões (capabilities), ex: `po.read`, `po.approve`, `inventory.read`, `audit.run`.
++- No token JWT inclua `roles` ou `scope` com as capabilities necessárias.
++
++## Backend (Express)
++1. Middleware `requireAuth`
++   - Valida JWT e injeta `req.user`.
++2. Middleware `requireRole(...roles)` / `requirePermission(...caps)`
++   - Checa se `req.user.roles` ou `req.user.scope` contém o direito exigido.
++3. Rotas
++   - Aplique os middlewares em rotas sensíveis (ex: aprovar pedidos, movimentações).
++4. Resposta
++   - 403 para falta de permissão; nunca vaze detalhes de regras internas.
++
++## Frontend (React)
++1. Gate de UI
++   - Oculte componentes de ação (botões, menus) se o usuário não possuir a permissão.
++   - Exiba placeholder ou tooltip explicando restrição quando apropriado.
++2. Proteção de Rotas
++   - Bloqueie navegação a módulos sem acesso.
++3. Utils
++   - Centralize checagens em um util único (ex: `hasAccess(user, 'inventory.read')`) para evitar duplicação.
++
++## Boas Práticas
++- Princípio do Menor Privilégio: conceda apenas o necessário para o papel.
++- Auditoria: logue tentativas negadas sem expor dados sensíveis.
++- Testes: cubra caminhos permitidos e negados.
++
++## Quando invocar esta skill
++- Ao criar novos módulos/ações (aprovar, excluir, movimentar).
++- Ao revisar segurança de rotas e páginas.
++- Ao depurar comportamentos de acesso inconsistentes.

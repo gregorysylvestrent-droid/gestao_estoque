@@ -1,0 +1,31 @@
+[
+  {
+    "id": "1",
+    "name": "Administrador",
+    "email": "admin@nortetech.com",
+    "role": "admin",
+    "status": "Ativo",
+    "last_access": "2026-02-12T13:58:00.000Z",
+    "avatar": "https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff",
+    "password": "pbkdf2$310000$5dc96dcdd9ccb0c17fabf9eb844c372b$9d8542eea21729337599f7321d0c1a576012b1add72d9d8c8c271b889bad9def",
+    "modules": [
+      "dashboard",
+      "recebimento",
+      "movimentacoes",
+      "estoque",
+      "expedicao",
+      "inventario_ciclico",
+      "compras",
+      "cadastro",
+      "relatorios",
+      "configuracoes",
+      "workshop",
+      "fleet"
+    ],
+    "allowed_warehouses": [
+      "ARMZ28",
+      "ARMZ33"
+    ],
+    "created_at": "2026-02-12T13:58:00.000Z"
+  }
+]

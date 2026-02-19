@@ -1,0 +1,7 @@
+﻿diff --git a/api-backend/data/fleet_fines.json b/api-backend/data/fleet_fines.json
+new file mode 100644
+index 0000000..fe51488
+--- /dev/null
++++ b/api-backend/data/fleet_fines.json
+@@ -0,0 +1 @@
++[]

@@ -1,0 +1,43 @@
+﻿diff --git a/.agent/skills/playwright_e2e/SKILL.md b/.agent/skills/playwright_e2e/SKILL.md
+new file mode 100644
+index 0000000..67e99e9
+--- /dev/null
++++ b/.agent/skills/playwright_e2e/SKILL.md
+@@ -0,0 +1,37 @@
++---
++name: playwright_e2e
++description: Cria e mantém testes E2E com Playwright. Invoque ao validar fluxos críticos de UI.
++---
++
++# Playwright E2E Skill
++
++Padroniza escrita e execução de testes ponta-a-ponta (E2E) com Playwright no frontend React.
++
++## Objetivos
++- Garantir estabilidade de fluxos essenciais (login, seleção de módulos, paginação).
++- Integrar com scripts existentes (`npm run e2e`).
++
++## Estrutura
++- Specs em `e2e/*.spec.ts`.
++- Configuração em `playwright.config.ts`.
++
++## Diretrizes
++1. Seletores
++   - Prefira `getByRole`, `getByLabel`, `getByTestId`.
++2. Cenários
++   - Login básico e verificação de acesso aos módulos principais.
++   - Fluxos com erros: credenciais inválidas, acesso negado.
++3. Estabilidade
++   - Use `await` apropriado; evite waits fixos.
++4. Relatórios
++   - Configure saída padrão de relatórios; avalie `--headed` para depuração.
++
++## Execução
++- Rodar local:
++  - `npm run e2e` ou `npm run e2e:headed`.
++- UI Runner:
++  - `npm run e2e:ui` para depurar interativamente.
++
++## Quando invocar esta skill
++- Ao adicionar novos fluxos de UI.
++- Ao prevenir regressões após mudanças em componentes críticos.

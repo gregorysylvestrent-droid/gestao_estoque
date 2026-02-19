@@ -1,0 +1,102 @@
+[
+  {
+    "id": "9d983cae-1876-4724-b6f9-c8968a2686db",
+    "work_order_id": "OS-001",
+    "previous_status": "em_execucao",
+    "new_status": "aguardando_pecas",
+    "timestamp": "2026-02-12T18:18:14.583Z",
+    "user_id": "1",
+    "duration_seconds": 382694,
+    "created_at": "2026-02-12T18:18:14.892Z"
+  },
+  {
+    "id": "436b2c29-39c7-42e4-b416-1eb959f3489b",
+    "work_order_id": "OS-002",
+    "previous_status": "aguardando_pecas",
+    "new_status": "em_execucao",
+    "timestamp": "2026-02-12T18:18:35.144Z",
+    "user_id": "1",
+    "duration_seconds": 460115,
+    "created_at": "2026-02-12T18:18:35.150Z"
+  },
+  {
+    "id": "0f99c8dd-335f-428a-a5fb-c0c9dc6b05b1",
+    "work_order_id": "OS-002",
+    "previous_status": "em_execucao",
+    "new_status": "aguardando_pecas",
+    "timestamp": "2026-02-12T18:20:01.520Z",
+    "user_id": "1",
+    "duration_seconds": 86,
+    "created_at": "2026-02-12T18:20:01.835Z"
+  },
+  {
+    "id": "0402ca60-779e-43b2-a89e-bac7651ce00f",
+    "work_order_id": "OS-1770920103507",
+    "previous_status": "em_execucao",
+    "new_status": "aguardando_pecas",
+    "timestamp": "2026-02-12T18:20:04.687Z",
+    "user_id": "1",
+    "duration_seconds": 301,
+    "created_at": "2026-02-12T18:20:04.691Z"
+  },
+  {
+    "id": "14d0b81a-f6ec-49b2-b523-0c6d30fdbd1c",
+    "work_order_id": "OS-1770920103507",
+    "previous_status": "aguardando_pecas",
+    "new_status": "em_execucao",
+    "timestamp": "2026-02-12T18:20:10.445Z",
+    "user_id": "1",
+    "duration_seconds": 5,
+    "created_at": "2026-02-12T18:20:10.450Z"
+  },
+  {
+    "id": "15ac6e82-545d-411a-bcc1-463d65754193",
+    "work_order_id": "OS-1770920103507",
+    "previous_status": "em_execucao",
+    "new_status": "aguardando_pecas",
+    "timestamp": "2026-02-12T19:28:59.984Z",
+    "user_id": "1",
+    "duration_seconds": 4129,
+    "created_at": "2026-02-12T19:29:00.298Z"
+  },
+  {
+    "id": "989c46a2-9c58-4c35-a767-5b265d99f3f4",
+    "work_order_id": "OS-1770920103507",
+    "previous_status": "aguardando_pecas",
+    "new_status": "em_execucao",
+    "timestamp": "2026-02-12T19:29:03.229Z",
+    "user_id": "1",
+    "duration_seconds": 3,
+    "created_at": "2026-02-12T19:29:03.235Z"
+  },
+  {
+    "id": "6fd1021d-0d92-45dc-9fd5-f041dcd19a44",
+    "work_order_id": "OS-1770920103507",
+    "previous_status": "em_execucao",
+    "new_status": "aguardando_pecas",
+    "timestamp": "2026-02-12T19:29:05.501Z",
+    "user_id": "1",
+    "duration_seconds": 2,
+    "created_at": "2026-02-12T19:29:05.506Z"
+  },
+  {
+    "id": "a90fa4f2-64e4-4469-ae2c-e88392dfff9b",
+    "work_order_id": "OS-1770920103507",
+    "previous_status": "aguardando_pecas",
+    "new_status": "em_execucao",
+    "timestamp": "2026-02-12T19:38:10.118Z",
+    "user_id": "1",
+    "duration_seconds": 544,
+    "created_at": "2026-02-12T19:38:10.122Z"
+  },
+  {
+    "id": "34c89358-20c6-4b76-a81c-c50970b340c9",
+    "work_order_id": "OS-1770920103507",
+    "previous_status": "em_execucao",
+    "new_status": "aguardando_pecas",
+    "timestamp": "2026-02-12T19:38:11.684Z",
+    "user_id": "1",
+    "duration_seconds": 1,
+    "created_at": "2026-02-12T19:38:11.688Z"
+  }
+]

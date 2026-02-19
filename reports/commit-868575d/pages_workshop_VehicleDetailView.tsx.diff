@@ -1,0 +1,93 @@
+﻿diff --git a/pages/workshop/VehicleDetailView.tsx b/pages/workshop/VehicleDetailView.tsx
+index 655743d..88336ab 100644
+--- a/pages/workshop/VehicleDetailView.tsx
++++ b/pages/workshop/VehicleDetailView.tsx
+@@ -1,4 +1,4 @@
+-import React, { useState } from 'react';
++﻿﻿import React, { useState } from 'react';
+ import { VehicleDetail, VehicleEvent, VehicleComponent, VehicleDocument } from '../../types';
+ 
+ interface VehicleDetailViewProps {
+@@ -108,6 +108,36 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
+     eventFilter === 'all' || event.type === eventFilter
+   );
+ 
++  const getStatusLabel = (status: string) => {
++    const labels: Record<string, string> = {
++      operacional: 'Operacional',
++      manutencao: 'Em Manutenção',
++      parado: 'Parado',
++      em_viagem: 'Em Viagem'
++    };
++    return labels[status] || status;
++  };
++
++  const getDocTypeLabel = (type: string) => {
++    const labels: Record<string, string> = {
++      ipva: 'IPVA 2024',
++      seguro: 'SEGURO',
++      licenciamento: 'LICENCIAMENTO',
++      circulacao: 'CIRCULAÇÃO'
++    };
++    return labels[type] || type.toUpperCase();
++  };
++
++  const getDocStatusLabel = (status: string, expiry?: string, notes?: string) => {
++    switch (status) {
++      case 'pago': return 'Pago';
++      case 'ativo': return `Ativo (Vence ${expiry || 'N/A'})`;
++      case 'pendente': return `Pendente (${notes || ''})`;
++      case 'vencido': return `Vencido (${notes || ''})`;
++      default: return status;
++    }
++  };
++
+   return (
+     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+       {/* Header */}
+@@ -125,7 +155,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
+               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{vehicle.model}</h1>
+               <span className="px-3 py-1 bg-slate-900 text-white text-sm font-semibold rounded-lg">{vehicle.plate}</span>
+               <span className={`px-3 py-1 text-sm font-medium rounded-lg border ${getStatusColor(vehicle.statusOperacional)}`}>
+-                {vehicle.statusOperacional === 'operacional' ? 'Operacional' : vehicle.statusOperacional}
++                {getStatusLabel(vehicle.statusOperacional)}
+               </span>
+             </div>
+             <div className="flex items-center gap-3">
+@@ -151,7 +181,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
+             </div>
+           </div>
+           <p className="text-slate-500 dark:text-slate-400 mt-1">
+-            Série: {vehicle.chassis} • Ano: {vehicle.year} • Hodômetro: {vehicle.mileage.toLocaleString()} km
++            Série: {vehicle.chassis} â€¢ Ano: {vehicle.year} â€¢ Hodômetro: {vehicle.mileage.toLocaleString()} km
+           </p>
+         </div>
+ 
+@@ -179,11 +209,11 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
+                 )}
+               </div>
+               <div>
+-                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase">{doc.type === 'ipva' ? 'IPVA 2024' : doc.type === 'seguro' ? 'SEGURO' : 'LICENCIAMENTO'}</p>
++                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase">{getDocTypeLabel(doc.type)}</p>
+                 <p className={`text-sm font-semibold ${
+                   doc.status === 'pago' || doc.status === 'ativo' ? 'text-emerald-600' : 'text-amber-600'
+                 }`}>
+-                  {doc.status === 'pago' ? 'Pago' : doc.status === 'ativo' ? `Ativo (Vence ${doc.expiryDate})` : `Pendente (${doc.notes})`}
++                  {getDocStatusLabel(doc.status, doc.expiryDate, doc.notes)}
+                 </p>
+               </div>
+             </div>
+@@ -349,7 +379,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
+                         <div>
+                           <h3 className="font-semibold text-slate-900 dark:text-white">{event.title}</h3>
+                           <p className="text-sm text-slate-500 dark:text-slate-400">
+-                            {event.date} • {event.mechanic || event.workshop}
++                            {event.date} â€¢ {event.mechanic || event.workshop}
+                           </p>
+                         </div>
+                         {event.osId && (
+@@ -411,3 +441,4 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
+ };
+ 
+ export default VehicleDetailView;
++

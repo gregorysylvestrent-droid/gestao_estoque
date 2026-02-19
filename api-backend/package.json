@@ -1,0 +1,39 @@
+{
+    "name": "logiwms-api",
+    "version": "1.0.0",
+    "description": "API Backend para LogiWMS Pro",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "nodemon --ignore data --ignore data-backups --ignore reports index.js",
+        "test": "node --test tests/*.test.js",
+        "db:health": "node scripts/db-health.mjs",
+        "wait:health": "node scripts/wait-for-health.mjs",
+        "db:migrate": "node scripts/db-migrate.mjs",
+        "clean:local": "node scripts/cleanup-local-artifacts.mjs",
+        "seed:reset": "node scripts/reset-test-data.mjs",
+        "seed:step": "node scripts/seed-step-data.mjs",
+        "import:xlsx:vehicles": "node scripts/import-xlsx-vehicles.mjs",
+        "import:xlsx:inventory": "node scripts/import-xlsx-inventory.mjs",
+        "import:xlsx:vendors": "node scripts/import-xlsx-vendors.mjs",
+        "seed:demo50": "node scripts/seed-big-data.mjs --scale demo50",
+        "seed:bigdata": "node scripts/seed-big-data.mjs --scale large",
+        "seed:bigdata:xlarge": "node scripts/seed-big-data.mjs --scale xlarge",
+        "test:stress": "node scripts/run-stress-tests.mjs"
+    },
+    "dependencies": {
+        "compression": "^1.8.1",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.18.3",
+        "helmet": "^8.1.0",
+        "jsonwebtoken": "^9.0.3",
+        "pg": "^8.11.3",
+        "ws": "^8.19.0",
+        "xlsx": "^0.18.5"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.11"
+    }
+}

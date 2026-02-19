@@ -1,0 +1,15 @@
+﻿diff --git a/pages/workshop/index.ts b/pages/workshop/index.ts
+index e180442..869a735 100644
+--- a/pages/workshop/index.ts
++++ b/pages/workshop/index.ts
+@@ -1,4 +1,4 @@
+-export { WorkshopDashboard } from './WorkshopDashboard';
++﻿export { WorkshopDashboard } from './WorkshopDashboard';
+ export { WorkOrderKanban } from './WorkOrderKanban';
+ export { MechanicsManagement } from './MechanicsManagement';
+ export { VehicleDetailView } from './VehicleDetailView';
+@@ -7,3 +7,4 @@ export { MaintenancePlanWizard } from './MaintenancePlanWizard';
+ export { ScheduleDetail } from './ScheduleDetail';
+ export { InspectionChecklistEditor } from './InspectionChecklistEditor';
+ export { VehicleManagement } from './VehicleManagement';
++

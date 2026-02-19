@@ -1,0 +1,49 @@
+{
+  "name": "logiwms-pro---gestão-inteligente-de-armazém",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:frontend": "vite --port 3002",
+    "dev:backend": "npm --prefix api-backend run dev",
+    "dev:local": "concurrently -k -n API,WEB -c yellow,cyan \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "local:reset": "powershell -ExecutionPolicy Bypass -File scripts/reset-local-dev.ps1",
+    "dev:local:clean": "npm run local:reset && npm run dev:local",
+    "deploy:hybrid:ec2": "powershell -ExecutionPolicy Bypass -File scripts/deploy-hybrid-frontend-ec2.ps1",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "local:db:up": "docker compose up -d db",
+    "local:db:down": "docker compose stop db",
+    "local:db:transfer": "powershell -ExecutionPolicy Bypass -File scripts/transfer-data.ps1",
+    "local:backend:setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-local-backend.ps1",
+    "clean:local": "npm --prefix api-backend run clean:local",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:ui": "playwright test --ui"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.2",
+    "@capacitor/cli": "^8.0.2",
+    "@capacitor/core": "^8.0.2",
+    "@supabase/supabase-js": "^2.93.3",
+    "qrcode.react": "3.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "2.12.7",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.1",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^2.1.8"
+  }
+}

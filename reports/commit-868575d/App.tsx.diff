@@ -1,0 +1,1511 @@
+﻿diff --git a/App.tsx b/App.tsx
+index b18822b..216db2b 100644
+--- a/App.tsx
++++ b/App.tsx
+@@ -1,4 +1,3 @@
+-﻿
+ import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+ import { Sidebar } from './components/Sidebar';
+ import { TopBar } from './components/TopBar';
+@@ -12,10 +11,12 @@ import { api, AUTH_TOKEN_KEY } from './api-client';
+ import { formatDateTimePtBR, formatTimePtBR, parseDateLike } from './utils/dateTime';
+ import {
+   normalizeAllowedWarehouses,
++  normalizeFleetAccess,
+   normalizeUserModules,
+   normalizeUserRole,
+   normalizeWorkshopAccess,
+ } from './utils/userAccess';
++import { normalizeWorkOrders } from './utils/workshopSanitizers';
+ 
+ const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })));
+ const Receiving = lazy(() => import('./pages/Receiving').then((module) => ({ default: module.Receiving })));
+@@ -44,7 +45,7 @@ const PreventiveDashboard = lazy(() => import('./pages/workshop').then((module)
+ const MaintenancePlanWizard = lazy(() => import('./pages/workshop').then((module) => ({ default: module.MaintenancePlanWizard })));
+ const ScheduleDetail = lazy(() => import('./pages/workshop').then((module) => ({ default: module.ScheduleDetail })));
+ const InspectionChecklistEditor = lazy(() => import('./pages/workshop').then((module) => ({ default: module.InspectionChecklistEditor })));
+-const VehicleManagement = lazy(() => import('./pages/workshop').then((module) => ({ default: module.VehicleManagement })));
++const FleetModule = lazy(() => import('./modules/fleet/FleetModule'));
+ 
+ import type { VehicleDetail, PreventiveKPIs, ActivePlan, MaintenanceAlert, MaintenancePlan, PreventiveSchedule, InspectionTemplate } from './types';
+ 
+@@ -80,6 +81,41 @@ const loadFromStorage = (key: string, defaultValue: any = null) => {
+   }
+ };
+ 
++class WorkshopErrorBoundary extends React.Component<
++  { children: React.ReactNode; onError: (error: Error, info: React.ErrorInfo) => void; resetKey: string },
++  { hasError: boolean }
++> {
++  state = { hasError: false };
++
++  static getDerivedStateFromError() {
++    return { hasError: true };
++  }
++
++  componentDidCatch(error: Error, info: React.ErrorInfo) {
++    this.props.onError(error, info);
++  }
++
++  componentDidUpdate(prevProps: { resetKey: string }) {
++    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
++      this.setState({ hasError: false });
++    }
++  }
++
++  render() {
++    if (this.state.hasError) {
++      return (
++        <div className="w-full flex items-center justify-center py-20">
++          <div className="text-center space-y-3">
++            <p className="text-sm font-black uppercase tracking-wider text-slate-500">Falha ao carregar a oficina</p>
++            <p className="text-xs text-slate-400">Voltando ao dashboard</p>
++          </div>
++        </div>
++      );
++    }
++    return this.props.children;
++  }
++}
++
+ export const App: React.FC = () => {
+ 
+   const [activeModule, setActiveModule] = useState<Module>('dashboard');
+@@ -101,7 +137,7 @@ export const App: React.FC = () => {
+ 
+   // System Module Selection (Warehouse vs Workshop)
+   const [currentSystemModule, setCurrentSystemModule] = useState<SystemModule | null>(null);
+-  const [workshopActiveModule, setWorkshopActiveModule] = useState<'dashboard' | 'orders' | 'mechanics' | 'preventive' | 'vehicles' | 'plans' | 'schedules' | 'checklists' | 'frota'>('dashboard');
++  const [workshopActiveModule, setWorkshopActiveModule] = useState<'dashboard' | 'orders' | 'mechanics' | 'preventive' | 'vehicles' | 'plans' | 'schedules' | 'checklists'>('dashboard');
+ 
+   // Workshop States
+   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+@@ -162,21 +198,24 @@ export const App: React.FC = () => {
+   };
+ 
+   const toVehiclePayload = (vehicle: Vehicle) => ({
+-    plate: vehicle.plate,
+-    model: vehicle.model,
+-    type: vehicle.type,
+-    status: vehicle.status,
+-    cost_center: vehicle.costCenter || null,
+-    last_maintenance: toIsoDateTime(vehicle.lastMaintenance),
++    placa: normalizeVehiclePlate(vehicle.plate),
++    desc_modelo: vehicle.model,
++    classe: vehicle.type,
++    cod_centro_custo: vehicle.costCenter || null,
++    dta_ult_manutencao: toIsoDateTime(vehicle.lastMaintenance),
++    gestao_multa: 'NAO',
++    km_atual: 0,
++    km_anterior: 0,
++    km_prox_manutencao: 0,
+   });
+ 
+   const mapVehicleRowToState = (row: any): Vehicle => ({
+-    plate: normalizeVehiclePlate(row?.plate),
+-    model: String(row?.model || ''),
+-    type: String(row?.type || 'PROPRIO'),
+-    status: normalizeVehicleStatus(row?.status),
+-    lastMaintenance: toPtBrDateTime(row?.last_maintenance, ''),
+-    costCenter: String(row?.cost_center || ''),
++    plate: normalizeVehiclePlate(row?.placa ?? row?.plate),
++    model: String(row?.desc_modelo ?? row?.model ?? ''),
++    type: String(row?.classe ?? row?.type ?? 'PROPRIO'),
++    status: normalizeVehicleStatus(row?.status ?? row?.status_operacional ?? 'Disponivel'),
++    lastMaintenance: toPtBrDateTime(row?.dta_ult_manutencao ?? row?.last_maintenance, ''),
++    costCenter: String(row?.cod_centro_custo ?? row?.cost_center ?? ''),
+   });
+ 
+   const normalizeVehicleInput = (vehicle: Partial<Vehicle>): Vehicle | null => {
+@@ -255,58 +294,66 @@ export const App: React.FC = () => {
+   const handleAddVehicle = async (vehicleData: Vehicle) => {
+     const normalizedVehicle = normalizeVehicleInput(vehicleData);
+     if (!normalizedVehicle) {
+-      showNotification('Preencha placa e modelo para cadastrar o veiculo.', 'error');
++      showNotification('Preencha placa e modelo para cadastrar o veículo.', 'error');
+       return;
+     }
+ 
+-    const { data, error } = await api.from('vehicles').insert(toVehiclePayload(normalizedVehicle));
++    const { data, error } = await api
++      .from('fleet_vehicles')
++      .eq('source_module', 'gestao_frota')
++      .insert(toVehiclePayload(normalizedVehicle));
+ 
+     if (!error) {
+-      const persisted = data ? mapVehicleRowToState(data) : normalizedVehicle;
++      const insertedRow = Array.isArray(data) ? data[0] : data;
++      const persisted = insertedRow ? mapVehicleRowToState(insertedRow) : normalizedVehicle;
+       setVehicles((prev) => [persisted, ...prev.filter((item) => item.plate !== persisted.plate)]);
+-      showNotification('Veiculo cadastrado com sucesso!', 'success');
++      showNotification('Veículo cadastrado com sucesso!', 'success');
+     } else {
+-      showNotification(error || 'Erro ao cadastrar veiculo', 'error');
++      showNotification(error || 'Erro ao cadastrar veículo', 'error');
+     }
+   };
+ 
+   const handleUpdateVehicle = async (updatedVehicle: Vehicle) => {
+     const normalizedVehicle = normalizeVehicleInput(updatedVehicle);
+     if (!normalizedVehicle) {
+-      showNotification('Dados de veiculo invalidos para atualizacao.', 'error');
++      showNotification('Dados de veículo inválidos para atualização.', 'error');
+       return;
+     }
+ 
+-    const { data, error } = await api.from('vehicles').eq('plate', normalizedVehicle.plate).update({
+-      model: normalizedVehicle.model,
+-      type: normalizedVehicle.type,
+-      status: normalizedVehicle.status,
+-      cost_center: normalizedVehicle.costCenter || null,
+-      last_maintenance: toIsoDateTime(normalizedVehicle.lastMaintenance),
+-    });
++    const vehiclePayload = toVehiclePayload(normalizedVehicle);
++    const { placa: _ignoredPlaca, ...updatePayload } = vehiclePayload;
++    const { data, error } = await api
++      .from('fleet_vehicles')
++      .eq('source_module', 'gestao_frota')
++      .eq('placa', normalizedVehicle.plate)
++      .update(updatePayload);
+ 
+     if (!error) {
+       const persisted = Array.isArray(data) && data.length > 0 ? mapVehicleRowToState(data[0]) : normalizedVehicle;
+       setVehicles((prev) => prev.map((item) => (item.plate === normalizedVehicle.plate ? persisted : item)));
+-      showNotification('Veiculo atualizado com sucesso!', 'success');
++      showNotification('Veículo atualizado com sucesso!', 'success');
+     } else {
+-      showNotification(error || 'Erro ao atualizar veiculo', 'error');
++      showNotification(error || 'Erro ao atualizar veículo', 'error');
+     }
+   };
+ 
+   const handleDeleteVehicle = async (plate: string) => {
+-    const { error } = await api.from('vehicles').eq('plate', plate).delete();
++    const { error } = await api
++      .from('fleet_vehicles')
++      .eq('source_module', 'gestao_frota')
++      .eq('placa', plate)
++      .delete();
+     if (!error) {
+       setVehicles(prev => prev.filter(v => v.plate !== plate));
+-      showNotification('Veiculo removido com sucesso!', 'success');
++      showNotification('Veículo removido com sucesso!', 'success');
+     } else {
+-      showNotification('Erro ao remover veiculo', 'error');
++      showNotification('Erro ao remover veículo', 'error');
+     }
+   };
+ 
+   const handleImportVehicles = async (incomingVehicles: Vehicle[]) => {
+     if (!Array.isArray(incomingVehicles) || incomingVehicles.length === 0) {
+-      showNotification('Nenhum veiculo valido para importar.', 'warning');
++      showNotification('Nenhum veículo válido para importar.', 'warning');
+       return;
+     }
+ 
+@@ -328,7 +375,10 @@ export const App: React.FC = () => {
+       return;
+     }
+ 
+-    const { data: dbVehicles, error: listError } = await api.from('vehicles').select('plate');
++    const { data: dbVehicles, error: listError } = await api
++      .from('fleet_vehicles')
++      .select('placa')
++      .eq('source_module', 'oficina');
+     if (listError) {
+       showNotification('Falha ao carregar frota atual para importar.', 'error');
+       return;
+@@ -336,7 +386,7 @@ export const App: React.FC = () => {
+ 
+     const existingPlates = new Set(
+       (dbVehicles || [])
+-        .map((row: any) => normalizeVehiclePlate(row?.plate))
++        .map((row: any) => normalizeVehiclePlate(row?.placa))
+         .filter(Boolean)
+     );
+ 
+@@ -357,7 +407,8 @@ export const App: React.FC = () => {
+ 
+     if (toInsert.length > 0) {
+       const { data, error } = await api
+-        .from('vehicles')
++        .from('fleet_vehicles')
++        .eq('source_module', 'gestao_frota')
+         .insert(toInsert.map((vehicle) => toVehiclePayload(vehicle)));
+ 
+       if (error) {
+@@ -368,13 +419,13 @@ export const App: React.FC = () => {
+     }
+ 
+     for (const vehicle of toUpdate) {
+-      const { error } = await api.from('vehicles').eq('plate', vehicle.plate).update({
+-        model: vehicle.model,
+-        type: vehicle.type,
+-        status: vehicle.status,
+-        cost_center: vehicle.costCenter || null,
+-        last_maintenance: toIsoDateTime(vehicle.lastMaintenance),
+-      });
++      const vehiclePayload = toVehiclePayload(vehicle);
++      const { placa: _ignoredPlaca, ...updatePayload } = vehiclePayload;
++      const { error } = await api
++        .from('fleet_vehicles')
++        .eq('source_module', 'gestao_frota')
++        .eq('placa', vehicle.plate)
++        .update(updatePayload);
+ 
+       if (error) {
+         failed += 1;
+@@ -383,12 +434,15 @@ export const App: React.FC = () => {
+       }
+     }
+ 
+-    const { data: refreshedVehicles } = await api.from('vehicles').select('*');
++    const { data: refreshedVehicles } = await api
++      .from('fleet_vehicles')
++      .select('*')
++      .eq('source_module', 'oficina');
+     if (refreshedVehicles) {
+       setVehicles(refreshedVehicles.map((row: any) => mapVehicleRowToState(row)));
+     }
+ 
+-    const summary = `Importacao concluida: ${inserted} novos, ${updated} atualizados${ignored > 0 ? `, ${ignored} ignorados` : ''}${failed > 0 ? `, ${failed} falharam` : ''}.`;
++    const summary = `Importação concluída: ${inserted} novos, ${updated} atualizados${ignored > 0 ? `, ${ignored} ignorados` : ''}${failed > 0 ? `, ${failed} falharam` : ''}.`;
+     showNotification(summary, failed > 0 ? (inserted > 0 || updated > 0 ? 'warning' : 'error') : 'success');
+   };
+ 
+@@ -488,6 +542,18 @@ export const App: React.FC = () => {
+   const MATERIAL_REQUESTS_PAGE_SIZE = 30; // Reduzido de 60
+   const MASTER_DATA_ITEMS_PAGE_SIZE = 50;
+   const VENDORS_PAGE_SIZE = 50;
++  const PURCHASE_ORDER_RECEIVED_RETENTION_MS = 24 * 60 * 60 * 1000;
++  const PURCHASE_ORDER_EXPIRY_CHECK_INTERVAL_MS = 60 * 1000;
++
++  const isPurchaseOrderExpiredAfterReceipt = (order: PurchaseOrder, nowMs = Date.now()) => {
++    if (!order || order.status !== 'recebido') return false;
++    const receivedAt = parseDateLike(order.receivedAt);
++    if (!receivedAt) return false;
++    return nowMs - receivedAt.getTime() >= PURCHASE_ORDER_RECEIVED_RETENTION_MS;
++  };
++
++  const pruneExpiredDeliveredPurchaseOrders = (orders: PurchaseOrder[], nowMs = Date.now()) =>
++    orders.filter((order) => !isPurchaseOrderExpiredAfterReceipt(order, nowMs));
+ 
+   const toPtBrDateTime = (value: unknown, fallback = ''): string => {
+     const parsed = formatDateTimePtBR(value, fallback);
+@@ -509,6 +575,17 @@ export const App: React.FC = () => {
+     return parsed.toISOString();
+   };
+ 
++  const resolveApiErrorMessage = (error: unknown, fallback = 'falha desconhecida'): string => {
++    if (!error) return fallback;
++    if (typeof error === 'string') return error;
++    if (error instanceof Error && error.message) return error.message;
++    if (typeof error === 'object' && error !== null) {
++      const candidate = (error as { message?: unknown }).message;
++      if (typeof candidate === 'string' && candidate.trim().length > 0) return candidate;
++    }
++    return fallback;
++  };
++
+   const nowIso = () => new Date().toISOString();
+ 
+   const normalizeUserSession = (rawUser: any): User => {
+@@ -536,12 +613,18 @@ export const App: React.FC = () => {
+         rawUser?.hasWorkshopAccess ?? rawUser?.has_workshop_access,
+         normalizedRole
+       ),
++      hasFleetAccess: normalizeFleetAccess(
++        rawUser?.modules,
++        rawUser?.hasFleetAccess ?? rawUser?.has_fleet_access,
++        normalizedRole
++      ),
+     };
+   };
+ 
+   const buildUserModulesPayload = (
+     modules: Module[] | undefined,
+     hasWorkshopAccess: boolean | undefined,
++    hasFleetAccess: boolean | undefined,
+     role: User['role']
+   ): string[] => {
+     const cleaned = (Array.isArray(modules) ? modules.map((moduleId) => String(moduleId)) : [])
+@@ -552,13 +635,24 @@ export const App: React.FC = () => {
+           .normalize('NFD')
+           .replace(/[\u0300-\u036f]/g, '')
+           .toLowerCase();
+-        return normalized !== 'workshop' && normalized !== 'oficina';
++        return (
++          normalized !== 'workshop' &&
++          normalized !== 'oficina' &&
++          normalized !== 'fleet' &&
++          normalized !== 'frota' &&
++          normalized !== 'gestao_frota' &&
++          normalized !== 'gestao_de_frota'
++        );
+       });
+ 
+     if (role === 'admin' || hasWorkshopAccess) {
+       cleaned.push('workshop');
+     }
+ 
++    if (role === 'admin' || hasFleetAccess) {
++      cleaned.push('fleet');
++    }
++
+     return [...new Set(cleaned)];
+   };
+ 
+@@ -672,16 +766,66 @@ export const App: React.FC = () => {
+     warehouseId: item.warehouse_id || 'ARMZ28'
+   }));
+ 
++  const normalizeDigits = (value: unknown) => String(value ?? '').replace(/\D+/g, '');
++  const normalizeCnpj = (value: unknown) => normalizeDigits(value).slice(0, 14);
++  const normalizePhone = (value: unknown) => {
++    const digits = normalizeDigits(value);
++    if (!digits) return '';
++    if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
++    if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
++    return String(value ?? '').trim();
++  };
++
++  const isValidCnpj = (value: unknown) => {
++    const cnpj = normalizeCnpj(value);
++    if (cnpj.length !== 14) return false;
++    if (/^(\d)\1{13}$/.test(cnpj)) return false;
++
++    const calcDigit = (base: string, factor: number) => {
++      let total = 0;
++      for (const digit of base) {
++        total += Number(digit) * factor;
++        factor -= 1;
++        if (factor < 2) factor = 9;
++      }
++      const remainder = total % 11;
++      return remainder < 2 ? 0 : 11 - remainder;
++    };
++
++    const firstBase = cnpj.slice(0, 12);
++    const firstDigit = calcDigit(firstBase, 5);
++    const secondDigit = calcDigit(`${firstBase}${firstDigit}`, 6);
++    return cnpj === `${firstBase}${firstDigit}${secondDigit}`;
++  };
++
++  const normalizeVendorStatus = (value: unknown): Vendor['status'] =>
++    String(value || '').toLowerCase() === 'bloqueado' ? 'Bloqueado' : 'Ativo';
++
+   const mapVendorRows = (rows: any[]): Vendor[] =>
+-    rows.map((vendor: any) => ({
+-      id: String(vendor?.id || ''),
+-      name: String(vendor?.name || ''),
+-      cnpj: String(vendor?.cnpj || ''),
+-      category: String(vendor?.category || ''),
+-      contact: String(vendor?.contact || ''),
+-      email: String(vendor?.email || ''),
+-      status: String(vendor?.status || 'Ativo').toLowerCase() === 'bloqueado' ? 'Bloqueado' : 'Ativo',
+-    }));
++    rows.map((vendor: any, index: number) => {
++      const razaoSocial = String(vendor?.razao_social || vendor?.name || '').trim();
++      const nomeFantasia = String(vendor?.nome_fantasia || '').trim();
++      const telefone = String(vendor?.telefone || vendor?.contact || '').trim();
++      const cnpjDigits = normalizeCnpj(vendor?.cnpj);
++      return {
++        id: String(vendor?.id || `VEN-${Date.now()}-${index}`),
++        idFornecedor:
++          vendor?.id_fornecedor === null || vendor?.id_fornecedor === undefined
++            ? undefined
++            : Number.isFinite(Number(vendor.id_fornecedor))
++              ? Number(vendor.id_fornecedor)
++              : undefined,
++        razaoSocial,
++        nomeFantasia,
++        cnpj: cnpjDigits,
++        telefone,
++        name: razaoSocial,
++        category: String(vendor?.category || ''),
++        contact: telefone || nomeFantasia,
++        email: String(vendor?.email || ''),
++        status: normalizeVendorStatus(vendor?.status),
++      };
++    });
+ 
+   const loadInventoryForWarehouse = async (warehouseId: string, limit = INITIAL_INVENTORY_LIMIT) => {
+     const safeLimit = Math.max(1, limit);
+@@ -729,7 +873,7 @@ export const App: React.FC = () => {
+       const { data: poData } = await api.from('purchase_orders').select('*').order('request_date', { ascending: false });
+       if (!poData) return;
+ 
+-      setPurchaseOrders(mapPurchaseOrders(poData));
++      setPurchaseOrders(pruneExpiredDeliveredPurchaseOrders(mapPurchaseOrders(poData)));
+       setIsPurchaseOrdersFullyLoaded(true);
+     });
+   };
+@@ -819,7 +963,7 @@ export const App: React.FC = () => {
+         return;
+       }
+ 
+-      const mapped = mapPurchaseOrders(data);
++      const mapped = pruneExpiredDeliveredPurchaseOrders(mapPurchaseOrders(data));
+       setHasMorePurchaseOrders(mapped.length > PURCHASE_ORDERS_PAGE_SIZE);
+       setPagedPurchaseOrders(mapped.slice(0, PURCHASE_ORDERS_PAGE_SIZE));
+     } catch (error) {
+@@ -1022,6 +1166,7 @@ export const App: React.FC = () => {
+         lastAccess: formatDateTimePtBR(new Date(), ''),
+         avatar: 'https://ui-avatars.com/api/?name=Administrador&background=0D8ABC&color=fff',
+         hasWorkshopAccess: true,
++        hasFleetAccess: true,
+       },
+       {
+         id: 'oper',
+@@ -1034,6 +1179,7 @@ export const App: React.FC = () => {
+         lastAccess: formatDateTimePtBR(new Date(), ''),
+         avatar: 'https://ui-avatars.com/api/?name=Operador&background=0D8ABC&color=fff',
+         hasWorkshopAccess: false,
++        hasFleetAccess: false,
+       }
+     ];
+     setUsers(mockUsers);
+@@ -1084,7 +1230,10 @@ export const App: React.FC = () => {
+         const { data: venData } = await api.from('vendors').select('*');
+         if (venData) setVendors(mapVendorRows(venData));
+ 
+-        const { data: vehData } = await api.from('vehicles').select('*');
++        const { data: vehData } = await api
++          .from('fleet_vehicles')
++          .select('*')
++          .eq('source_module', 'armazem');
+         if (vehData) setVehicles(vehData.map((row: any) => mapVehicleRowToState(row)));
+ 
+         const { data: userData } = await api.from('users').select('*');
+@@ -1099,7 +1248,7 @@ export const App: React.FC = () => {
+           .order('request_date', { ascending: false })
+           .limit(INITIAL_PURCHASE_ORDERS_LIMIT);
+         if (poData) {
+-          setPurchaseOrders(mapPurchaseOrders(poData));
++          setPurchaseOrders(pruneExpiredDeliveredPurchaseOrders(mapPurchaseOrders(poData)));
+           setIsPurchaseOrdersFullyLoaded(poData.length < INITIAL_PURCHASE_ORDERS_LIMIT);
+         }
+ 
+@@ -1200,6 +1349,26 @@ export const App: React.FC = () => {
+     void fetchPurchaseOrdersPage(purchaseOrdersPage);
+   }, [activeModule, user, activeWarehouse, purchaseOrdersPage]);
+ 
++  useEffect(() => {
++    if (!user) return;
++
++    const intervalId = window.setInterval(() => {
++      const nowMs = Date.now();
++
++      setPurchaseOrders((prev) => {
++        const next = pruneExpiredDeliveredPurchaseOrders(prev, nowMs);
++        return next.length === prev.length ? prev : next;
++      });
++
++      setPagedPurchaseOrders((prev) => {
++        const next = pruneExpiredDeliveredPurchaseOrders(prev, nowMs);
++        return next.length === prev.length ? prev : next;
++      });
++    }, PURCHASE_ORDER_EXPIRY_CHECK_INTERVAL_MS);
++
++    return () => window.clearInterval(intervalId);
++  }, [user]);
++
+   useEffect(() => {
+     if (activeModule !== 'expedicao') return;
+     if (!user) return;
+@@ -1281,7 +1450,12 @@ export const App: React.FC = () => {
+   }, [user]);
+ 
+   const handleAddUser = async (newUser: User) => {
+-    const modulesPayload = buildUserModulesPayload(newUser.modules, newUser.hasWorkshopAccess, newUser.role);
++    const modulesPayload = buildUserModulesPayload(
++      newUser.modules,
++      newUser.hasWorkshopAccess,
++      newUser.hasFleetAccess,
++      newUser.role
++    );
+     const { error } = await api.from('users').insert({
+       id: newUser.id,
+       name: newUser.name,
+@@ -1309,6 +1483,7 @@ export const App: React.FC = () => {
+     const modulesPayload = buildUserModulesPayload(
+       updatedUser.modules,
+       updatedUser.hasWorkshopAccess,
++      updatedUser.hasFleetAccess,
+       updatedUser.role
+     );
+     const { error } = await api.from('users').eq('id', updatedUser.id).update({
+@@ -1333,6 +1508,11 @@ export const App: React.FC = () => {
+           showNotification('Acesso à Oficina removido para este usuário.', 'warning');
+           return;
+         }
++        if (currentSystemModule === 'fleet' && persistedUser.role !== 'admin' && !persistedUser.hasFleetAccess) {
++          setCurrentSystemModule(null);
++          showNotification('Acesso à Gestão de Frota removido para este usuário.', 'warning');
++          return;
++        }
+       }
+       showNotification('Usuário atualizado com sucesso!', 'success');
+     } else {
+@@ -1360,6 +1540,43 @@ export const App: React.FC = () => {
+     setTimeout(() => setNotification(null), 3000);
+   };
+ 
++  const canAccessWorkshop = () => {
++    if (!user) {
++      console.warn('Tentativa de acesso a oficina sem usuario autenticado');
++      showNotification('Usuário não autenticado.', 'error');
++      setCurrentSystemModule(null);
++      return false;
++    }
++    if (user.role !== 'admin' && !user.hasWorkshopAccess) {
++      console.warn('Acesso a oficina bloqueado', { userId: user.id, role: user.role });
++      showNotification('Acesso à Oficina bloqueado para este usuário.', 'error');
++      setCurrentSystemModule(null);
++      return false;
++    }
++    return true;
++  };
++
++  const canAccessFleet = () => {
++    if (!user) {
++      console.warn('Tentativa de acesso a gestao de frota sem usuario autenticado');
++      showNotification('Usuário não autenticado.', 'error');
++      setCurrentSystemModule(null);
++      return false;
++    }
++    if (user.role !== 'admin' && !user.hasFleetAccess) {
++      console.warn('Acesso a gestao de frota bloqueado', { userId: user.id, role: user.role });
++      showNotification('Acesso à Gestão de Frota bloqueado para este usuário.', 'error');
++      setCurrentSystemModule(null);
++      return false;
++    }
++    return true;
++  };
++
++  const navigateWorkshopModule = (module: typeof workshopActiveModule) => {
++    if (!canAccessWorkshop()) return;
++    setWorkshopActiveModule(module);
++  };
++
+   const addActivity = (type: Activity['type'], title: string, subtitle: string) => {
+     const newActivity: Activity = {
+       id: Math.random().toString(36).substr(2, 9),
+@@ -1617,11 +1834,6 @@ export const App: React.FC = () => {
+       return;
+     }
+ 
+-    if (order.status === 'recebido') {
+-      showNotification('Não é permitido remover pedido já recebido.', 'warning');
+-      return;
+-    }
+-
+     const { error } = await api.from('purchase_orders').eq('id', id).delete();
+     if (error) {
+       showNotification('Erro ao remover pedido de compra.', 'error');
+@@ -2589,8 +2801,17 @@ export const App: React.FC = () => {
+   const handleAddMasterRecord = async (type: 'item' | 'vendor' | 'vehicle' | 'cost_center', data: any, isEdit: boolean) => {
+     if (type === 'item') {
+       if (isEdit) {
++        const normalizedName = String(data?.name || '').trim();
++        if (!normalizedName) {
++          showNotification('Descricao do item e obrigatoria.', 'error');
++          return;
++        }
++        if (normalizedName.length > 255) {
++          showNotification('Descricao do item deve ter no maximo 255 caracteres.', 'error');
++          return;
++        }
+         const { error } = await api.from('inventory').eq('sku', data.sku).update({
+-          name: data.name,
++          name: normalizedName,
+           category: data.category,
+           unit: data.unit,
+           image_url: data.imageUrl,
+@@ -2605,19 +2826,36 @@ export const App: React.FC = () => {
+           }
+           showNotification('Item atualizado com sucesso', 'success');
+         } else {
+-          showNotification(`Erro ao atualizar item: ${error.message}`, 'error');
++          showNotification(`Erro ao atualizar item: ${resolveApiErrorMessage(error)}`, 'error');
+         }
+       } else {
++        const sku = String(data?.sku || '').trim().toUpperCase();
++        const description = String(data?.name || '').trim();
++        if (!sku) {
++          showNotification('Código item (SKU) é obrigatório.', 'error');
++          return;
++        }
++        if (!description) {
++          showNotification('Descrição do item é obrigatória.', 'error');
++          return;
++        }
++        if (description.length > 255) {
++          showNotification('Descricao do item deve ter no maximo 255 caracteres.', 'error');
++          return;
++        }
+         const { data: insertedData, error } = await api.from('inventory').insert({
+-          name: data.name,
+-          category: data.category,
+-          unit: data.unit,
+-          image_url: data.imageUrl,
++          sku,
++          name: description,
++          category: data.category || 'GERAL',
++          unit: data.unit || 'UN',
++          image_url:
++            data.imageUrl ||
++            'https://images.unsplash.com/photo-1553413077-190dd305871c?w=400&q=80',
+           quantity: 0,
+           status: 'disponivel',
+           location: 'DOCA-01',
+           warehouse_id: activeWarehouse,
+-          min_qty: data.minQty || 10,
++          min_qty: data.minQty || 0,
+           max_qty: 1000,
+           lead_time: 7,
+           safety_stock: 5
+@@ -2638,38 +2876,84 @@ export const App: React.FC = () => {
+             showNotification('Item criado, mas houve falha ao atualizar a tela.', 'warning');
+           }
+         } else {
+-          showNotification(`Erro ao criar item: ${error?.message || 'falha desconhecida'}`, 'error');
++          showNotification(`Erro ao criar item: ${resolveApiErrorMessage(error)}`, 'error');
+         }
+       }
+     } else if (type === 'vendor') {
++      const normalizedStatus: Vendor['status'] =
++        String(data?.status || 'Ativo').toLowerCase() === 'bloqueado' ? 'Bloqueado' : 'Ativo';
++      const razaoSocial = String(data?.razaoSocial || data?.name || '').trim();
++      const nomeFantasia = String(data?.nomeFantasia || '').trim();
++      const telefone = normalizePhone(data?.telefone || data?.contact || '');
++      const cnpj = normalizeCnpj(data?.cnpj);
++
++      if (!razaoSocial) {
++        showNotification('Razão social é obrigatória.', 'error');
++        return;
++      }
++      if (razaoSocial.length > 150) {
++        showNotification('Razao social deve ter no maximo 150 caracteres.', 'error');
++        return;
++      }
++      if (nomeFantasia.length > 100) {
++        showNotification('Nome fantasia deve ter no maximo 100 caracteres.', 'error');
++        return;
++      }
++      if (!isValidCnpj(cnpj)) {
++        showNotification('CNPJ invalido. Informe um CNPJ valido.', 'error');
++        return;
++      }
++
+       if (isEdit) {
+         const vendorPayload = {
+-          name: String(data?.name || ''),
+-          cnpj: String(data?.cnpj || ''),
++          razao_social: razaoSocial,
++          nome_fantasia: nomeFantasia,
++          cnpj,
++          telefone,
++          name: razaoSocial,
++          contact: telefone || nomeFantasia,
+           category: String(data?.category || ''),
+-          contact: String(data?.contact || ''),
+           email: String(data?.email || ''),
+-          status: String(data?.status || 'Ativo').toLowerCase() === 'bloqueado' ? 'Bloqueado' : 'Ativo',
++          status: normalizedStatus,
+         };
+         const { error } = await api.from('vendors').eq('id', data.id).update(vendorPayload);
+         if (!error) {
+-          setVendors(prev => prev.map(v => (v.id === data.id ? { ...v, ...vendorPayload } : v)));
++          setVendors(prev =>
++            prev.map(v =>
++              v.id === data.id
++                ? {
++                    ...v,
++                    ...vendorPayload,
++                    razaoSocial,
++                    nomeFantasia,
++                    telefone,
++                    cnpj,
++                    name: razaoSocial,
++                    contact: telefone || nomeFantasia,
++                    status: normalizedStatus,
++                  }
++                : v
++            )
++          );
+           if (activeModule === 'cadastro') {
+             await fetchVendorsPage(vendorsPage);
+           }
+           showNotification('Fornecedor atualizado com sucesso', 'success');
+         } else {
+-          showNotification(`Erro ao atualizar fornecedor: ${error.message}`, 'error');
++          showNotification(`Erro ao atualizar fornecedor: ${resolveApiErrorMessage(error)}`, 'error');
+         }
+       } else {
+         const newVendor: Vendor = {
+           id: String(data?.id || Date.now().toString()),
+-          name: String(data?.name || ''),
+-          cnpj: String(data?.cnpj || ''),
++          razaoSocial,
++          nomeFantasia,
++          cnpj,
++          telefone,
++          name: razaoSocial,
+           category: String(data?.category || ''),
+-          contact: String(data?.contact || ''),
++          contact: telefone || nomeFantasia,
+           email: String(data?.email || ''),
+-          status: String(data?.status || 'Ativo').toLowerCase() === 'bloqueado' ? 'Bloqueado' : 'Ativo',
++          status: normalizedStatus,
+         };
+         const { data: insertedData, error } = await api.from('vendors').insert(newVendor);
+         if (!error) {
+@@ -2682,39 +2966,37 @@ export const App: React.FC = () => {
+           }
+           showNotification('Fornecedor cadastrado com sucesso', 'success');
+         } else {
+-          showNotification(`Erro ao cadastrar fornecedor: ${error.message}`, 'error');
++          showNotification(`Erro ao cadastrar fornecedor: ${resolveApiErrorMessage(error)}`, 'error');
+         }
+       }
+     } else if (type === 'vehicle') {
+       if (isEdit) {
+-        const { error } = await api.from('vehicles').eq('plate', data.plate).update({
+-          model: data.model,
+-          type: data.type,
+-          cost_center: data.costCenter
+-        });
++        const payload = toVehiclePayload(data);
++        const { placa: _ignoredPlaca, ...updatePayload } = payload;
++        const { error } = await api
++          .from('fleet_vehicles')
++          .eq('source_module', 'gestao_frota')
++          .eq('placa', data.plate)
++          .update(updatePayload);
+         if (!error) {
+           setVehicles(prev => prev.map(v => v.plate === data.plate ? { ...v, ...data } : v));
+           showNotification('Veículo atualizado com sucesso', 'success');
+         } else {
+-          showNotification(`Erro ao atualizar veículo: ${error.message}`, 'error');
++          showNotification(`Erro ao atualizar veículo: ${resolveApiErrorMessage(error)}`, 'error');
+         }
+       } else {
+         const maintenanceIso = nowIso();
+         const newVehicle: Vehicle = { ...data, status: 'Disponível', lastMaintenance: toPtBrDateTime(maintenanceIso) };
+-        const { error } = await api.from('vehicles').insert({
+-          plate: newVehicle.plate,
+-          model: newVehicle.model,
+-          type: newVehicle.type,
+-          status: newVehicle.status,
+-          last_maintenance: maintenanceIso,
+-          cost_center: newVehicle.costCenter
+-        });
++        const { error } = await api
++          .from('fleet_vehicles')
++          .eq('source_module', 'gestao_frota')
++          .insert(toVehiclePayload({ ...newVehicle, lastMaintenance: maintenanceIso }));
+ 
+         if (!error) {
+           setVehicles(prev => [...prev, newVehicle]);
+           showNotification('Veículo cadastrado com sucesso', 'success');
+         } else {
+-          showNotification(`Erro ao cadastrar veículo: ${error.message}`, 'error');
++          showNotification(`Erro ao cadastrar veículo: ${resolveApiErrorMessage(error)}`, 'error');
+         }
+       }
+     }
+@@ -2726,43 +3008,62 @@ export const App: React.FC = () => {
+ 
+     if (type === 'item') {
+       table = 'inventory';
+-      processedData = data.map(d => ({
+-        // Mapping logic omitted for brevity, reusing existing structure logic would be better but simple mapping here
+-        name: d.name,
+-        category: d.category || 'Geral',
+-        unit: d.unit || 'UN',
+-        image_url: d.imageUrl,
+-        quantity: Math.round(Number(d.quantity) || 0),
+-        status: d.status || 'disponivel',
+-        sku: d.sku && !d.sku.startsWith('AUTO-') ? d.sku : undefined,
+-        warehouse_id: activeWarehouse,
+-        // Defaults
+-        min_qty: d.minQty || 10, max_qty: 1000, lead_time: 7, safety_stock: 5
+-      }));
++      processedData = data
++        .map((d) => ({
++          sku: String(d?.sku || '').trim().toUpperCase(),
++          name: String(d?.name || '').trim(),
++          category: d.category || 'GERAL',
++          unit: d.unit || 'UN',
++          image_url:
++            d.imageUrl ||
++            'https://images.unsplash.com/photo-1553413077-190dd305871c?w=400&q=80',
++          quantity: Math.round(Number(d.quantity) || 0),
++          status: d.status || 'disponivel',
++          warehouse_id: activeWarehouse,
++          min_qty: d.minQty || 0,
++          max_qty: 1000,
++          lead_time: 7,
++          safety_stock: 5,
++        }))
++        .filter((item) => item.sku && item.name);
+     } else if (type === 'vendor') {
+       table = 'vendors';
+       processedData = data.map((d, index) => ({
+         id: String(d.id || `${Date.now()}-${index}`),
+-        name: String(d.name || ''),
+-        cnpj: String(d.cnpj || ''),
++        razao_social: String(d.razaoSocial || d.name || ''),
++        nome_fantasia: String(d.nomeFantasia || ''),
++        cnpj: normalizeCnpj(d.cnpj),
++        telefone: normalizePhone(d.telefone || d.contact || ''),
++        name: String(d.razaoSocial || d.name || ''),
+         category: String(d.category || ''),
+-        contact: String(d.contact || ''),
++        contact: normalizePhone(d.telefone || d.contact || '') || String(d.nomeFantasia || ''),
+         email: String(d.email || ''),
+         status: String(d.status || 'Ativo').toLowerCase() === 'bloqueado' ? 'Bloqueado' : 'Ativo'
+       }));
+     } else if (type === 'vehicle') {
+-      table = 'vehicles';
+-      processedData = data.map(d => ({
+-        plate: d.plate,
+-        model: d.model,
+-        type: d.type,
+-        status: d.status,
+-        last_maintenance: toIsoDateTime(d.lastMaintenance),
+-        cost_center: d.costCenter
+-      }));
++      table = 'fleet_vehicles';
++      processedData = data.map((d) =>
++        toVehiclePayload({
++          plate: d.plate,
++          model: d.model,
++          type: d.type,
++          status: d.status,
++          lastMaintenance: d.lastMaintenance,
++          costCenter: d.costCenter,
++        })
++      );
++    }
++
++    if (processedData.length === 0) {
++      showNotification('Nenhum registro válido para importar.', 'warning');
++      return;
+     }
+ 
+-    const { data: insertedData, error } = await api.from(table).insert(processedData);
++    const importRequest =
++      table === 'fleet_vehicles'
++        ? api.from(table).eq('source_module', 'gestao_frota').insert(processedData)
++        : api.from(table).insert(processedData);
++    const { data: insertedData, error } = await importRequest;
+ 
+     if (!error) {
+       if (type === 'item' && insertedData) {
+@@ -2781,7 +3082,15 @@ export const App: React.FC = () => {
+           await fetchVendorsPage(1);
+         }
+       } else if (type === 'vehicle') {
+-        setVehicles(prev => [...prev, ...data]);
++        const normalizedInserted = Array.isArray(insertedData)
++          ? insertedData.map((row: any) => mapVehicleRowToState(row))
++          : [];
++        if (normalizedInserted.length > 0) {
++          setVehicles((prev) => [
++            ...normalizedInserted,
++            ...prev.filter((vehicle) => !normalizedInserted.some((added) => added.plate === vehicle.plate)),
++          ]);
++        }
+       }
+       showNotification(`${data.length} registros importados`, 'success');
+       addActivity('alerta', 'Importação XLSX', `${data.length} registros de ${type} adicionados`);
+@@ -2827,29 +3136,25 @@ export const App: React.FC = () => {
+ 
+       console.log(`Total de veículos recuperados: ${allVeiculos.length}`);
+ 
+-      const processedData = allVeiculos.map(v => ({
+-        plate: v.cod_placa,
+-        model: v.modelo_veiculo,
+-        type: v.des_tip_veic,
+-        status: v.id_ativo === 1 ? 'Disponível' : 'Manutenção',
+-        last_maintenance: toIsoDateTime(v.dta_ult_manut),
+-        cost_center: v.centro_custo
+-      }));
++      const processedData = allVeiculos.map((v) =>
++        toVehiclePayload({
++          plate: v.cod_placa,
++          model: v.modelo_veiculo,
++          type: v.des_tip_veic,
++          status: v.id_ativo === 1 ? 'Disponível' : 'Manutenção',
++          lastMaintenance: v.dta_ult_manut,
++          costCenter: v.centro_custo,
++        })
++      );
+ 
+-      // Upsert to API
+-      const { error } = await api.from('vehicles').insert(processedData); // No upsert yet, using insert
++      const { error } = await api
++        .from('fleet_vehicles')
++        .eq('source_module', 'gestao_frota')
++        .insert(processedData);
+ 
+       if (error) throw error;
+ 
+-      // Update local state
+-      setVehicles(processedData.map(v => ({
+-        plate: v.plate,
+-        model: v.model,
+-        type: v.type,
+-        status: v.status as any,
+-        lastMaintenance: toPtBrDateTime(v.last_maintenance),
+-        costCenter: v.cost_center
+-      })));
++      setVehicles(processedData.map((row) => mapVehicleRowToState(row)));
+ 
+       showNotification(`${processedData.length} veículos sincronizados com sucesso via Bridge!`, 'success');
+       addActivity('alerta', 'Sincronização API', `${processedData.length} veículos atualizados via Fleet API`);
+@@ -2864,9 +3169,13 @@ export const App: React.FC = () => {
+     let matchKey = '';
+     if (type === 'item') { table = 'inventory'; matchKey = 'sku'; }
+     else if (type === 'vendor') { table = 'vendors'; matchKey = 'id'; }
+-    else if (type === 'vehicle') { table = 'vehicles'; matchKey = 'plate'; }
++    else if (type === 'vehicle') { table = 'fleet_vehicles'; matchKey = 'placa'; }
+ 
+-    const { error } = await api.from(table).eq(matchKey, id).delete();
++    const deleteRequest =
++      table === 'fleet_vehicles'
++        ? api.from(table).eq('source_module', 'gestao_frota').eq(matchKey, id).delete()
++        : api.from(table).eq(matchKey, id).delete();
++    const { error } = await deleteRequest;
+     if (!error) {
+       if (type === 'item') {
+         const targetPage = pagedMasterDataItems.length === 1 && masterDataItemsPage > 1
+@@ -3249,10 +3558,8 @@ export const App: React.FC = () => {
+ 
+   // Workshop Handlers
+   const handleSelectSystemModule = async (module: SystemModule) => {
+-    if (module === 'workshop' && user && user.role !== 'admin' && !user.hasWorkshopAccess) {
+-      showNotification('Acesso à Oficina bloqueado para este usuário.', 'error');
+-      return;
+-    }
++    if (module === 'workshop' && !canAccessWorkshop()) return;
++    if (module === 'fleet' && !canAccessFleet()) return;
+ 
+     setCurrentSystemModule(module);
+     setIsLoading(true);
+@@ -3264,8 +3571,9 @@ export const App: React.FC = () => {
+         await bootstrapData(activeWarehouse);
+       }
+     } else if (module === 'workshop') {
+-      // Carregar dados da oficina
+       await loadWorkshopData();
++    } else if (module === 'fleet') {
++      // Módulo isolado de gestão de frota: não depende dos carregamentos do armazém/oficina.
+     }
+     
+     setIsLoading(false);
+@@ -3444,40 +3752,32 @@ export const App: React.FC = () => {
+       }
+ 
+       // Carregar ordens de serviço do banco ou usar seed
+-      const { data: workOrdersData } = await api.from('work_orders').select('*').order('opened_at', { ascending: false });
+-      if (workOrdersData && workOrdersData.length > 0) {
+-        setWorkOrders(workOrdersData.map((wo: any) => ({
+-          id: wo.id,
+-          vehiclePlate: wo.vehicle_plate,
+-          vehicleModel: wo.vehicle_model,
+-          status: wo.status,
+-          type: wo.type,
+-          priority: wo.priority,
+-          mechanicId: wo.mechanic_id,
+-          mechanicName: wo.mechanic_name,
+-          description: wo.description,
+-          services: wo.services || [],
+-          parts: wo.parts || [],
+-          openedAt: wo.opened_at,
+-          closedAt: wo.closed_at,
+-          estimatedHours: wo.estimated_hours,
+-          actualHours: wo.actual_hours,
+-          costCenter: wo.cost_center,
+-          cost: {
+-            labor: wo.cost_labor || 0,
+-            parts: wo.cost_parts || 0,
+-            thirdParty: wo.cost_third_party || 0,
+-            total: wo.cost_total || 0
+-          },
+-          createdBy: wo.created_by,
+-          warehouseId: wo.warehouse_id
+-        })));
++      const { data: workOrdersData, error: workOrdersError } = await api
++        .from('work_orders')
++        .select('*')
++        .order('opened_at', { ascending: false });
++      if (workOrdersError) {
++        console.error('Erro ao carregar ordens de servico', workOrdersError);
++      }
++      const normalizedWorkOrders = normalizeWorkOrders(workOrdersData, {
++        warehouseId: activeWarehouse,
++        createdBy: user?.name || 'Sistema',
++      });
++      if (normalizedWorkOrders.length > 0) {
++        setWorkOrders(normalizedWorkOrders);
+       } else {
++        if (Array.isArray(workOrdersData) && workOrdersData.length > 0) {
++          console.error('Ordens de servico invalidas, usando dados locais', workOrdersData);
++          showNotification('Dados de ordens de serviço inválidos. Exibindo dados locais.', 'warning');
++        }
+         setWorkOrders(seedWorkOrders);
+       }
+ 
+       // Carregar veículos do banco ou usar seed
+-      const { data: vehData } = await api.from('vehicles').select('*');
++      const { data: vehData } = await api
++        .from('fleet_vehicles')
++        .select('*')
++        .eq('source_module', 'oficina');
+       if (vehData && vehData.length > 0) {
+         setVehicles(vehData.map((row: any) => mapVehicleRowToState(row)));
+       } else {
+@@ -3488,22 +3788,104 @@ export const App: React.FC = () => {
+       setVehicleDetails(seedVehicleDetails);
+ 
+     } catch (error) {
+-      console.error('Erro ao carregar dados da oficina:', error);
++      console.error('Erro ao carregar dados da oficina', error);
+       showNotification('Erro ao carregar dados da oficina', 'error');
++      setWorkshopActiveModule('dashboard');
++    }
++  };
++
++  const handleLockWorkOrder = async (orderId: string) => {
++    if (!user) return;
++    const { error } = await api.from('work_orders').eq('id', orderId).update({
++      locked_by: user.id,
++      locked_at: new Date().toISOString()
++    });
++    if (!error) {
++      setWorkOrders(prev => prev.map(o => o.id === orderId ? { ...o, lockedBy: user.id, lockedAt: new Date().toISOString() } : o));
++    }
++  };
++
++  const handleUnlockWorkOrder = async (orderId: string) => {
++    const { error } = await api.from('work_orders').eq('id', orderId).update({
++      locked_by: null,
++      locked_at: null
++    });
++    if (!error) {
++      setWorkOrders(prev => prev.map(o => o.id === orderId ? { ...o, lockedBy: undefined, lockedAt: undefined } : o));
+     }
+   };
+ 
+   const handleUpdateWorkOrderStatus = async (orderId: string, newStatus: WorkOrderStatus) => {
++    const now = new Date().toISOString();
++    const order = workOrders.find(o => o.id === orderId);
++    if (!order) return;
++
++    if (order.lockedBy && order.lockedBy !== user?.id) {
++      showNotification('Esta OS está sendo editada por outro usuário.', 'error');
++      return;
++    }
++
++    let totalSeconds = order.totalSeconds || 0;
++    
++    // Se estava em execução, soma o tempo decorrido
++    if (order.status === 'em_execucao' && order.lastStatusChange) {
++      const start = new Date(order.lastStatusChange).getTime();
++      const end = new Date(now).getTime();
++      const diffSeconds = Math.floor((end - start) / 1000);
++      totalSeconds += diffSeconds;
++    }
++
++    const isTimerActive = newStatus === 'em_execucao';
++
++    // Registrar log de tempo (TimeLog)
++    if (order.status !== newStatus) {
++      let duration = 0;
++      if (order.lastStatusChange) {
++        const start = new Date(order.lastStatusChange).getTime();
++        const end = new Date(now).getTime();
++        duration = Math.floor((end - start) / 1000);
++      }
++
++      try {
++        await api.from('work_order_logs').insert({
++          id: `LOG-${Date.now()}`,
++          work_order_id: orderId,
++          previous_status: order.status,
++          new_status: newStatus,
++          timestamp: now,
++          user_id: user?.id,
++          duration_seconds: duration
++        });
++      } catch (logError) {
++        console.warn('Falha ao registrar log de status da OS', logError);
++      }
++    }
++
+     const { error } = await api.from('work_orders').eq('id', orderId).update({ 
+       status: newStatus,
+-      closed_at: newStatus === 'finalizada' ? new Date().toISOString() : null
++      closed_at: newStatus === 'finalizada' ? now : null,
++      total_seconds: totalSeconds,
++      last_status_change: now,
++      is_timer_active: isTimerActive
+     });
+     
++    const applyLocalStatusUpdate = () => {
++      setWorkOrders(prev => prev.map(o => o.id === orderId ? {
++        ...o,
++        status: newStatus,
++        closedAt: newStatus === 'finalizada' ? now : undefined,
++        totalSeconds,
++        lastStatusChange: now,
++        isTimerActive
++      } : o));
++    };
++
+     if (!error) {
+-      setWorkOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
++      applyLocalStatusUpdate();
+       showNotification(`Status da OS ${orderId} atualizado`, 'success');
+     } else {
+-      showNotification('Erro ao atualizar status', 'error');
++      applyLocalStatusUpdate();
++      showNotification('Status atualizado localmente (falha ao persistir no backend).', 'warning');
+     }
+   };
+ 
+@@ -3529,12 +3911,14 @@ export const App: React.FC = () => {
+   const handleCreateWorkOrder = async (workOrder: Omit<WorkOrder, 'id' | 'openedAt' | 'createdBy'>) => {
+     const id = `OS-${Date.now()}`;
+     const openedAt = new Date().toISOString();
++    const createdStatus: WorkOrderStatus = (workOrder.status as WorkOrderStatus) || 'em_execucao';
++    const createdIsTimerActive = createdStatus === 'em_execucao';
+     
+     const { error } = await api.from('work_orders').insert({
+       id,
+       vehicle_plate: workOrder.vehiclePlate,
+       vehicle_model: workOrder.vehicleModel,
+-      status: workOrder.status,
++      status: createdStatus,
+       type: workOrder.type,
+       priority: workOrder.priority,
+       mechanic_id: workOrder.mechanicId,
+@@ -3550,7 +3934,10 @@ export const App: React.FC = () => {
+       cost_third_party: workOrder.cost.thirdParty,
+       cost_total: workOrder.cost.total,
+       created_by: user?.name || 'Sistema',
+-      warehouse_id: activeWarehouse
++      warehouse_id: activeWarehouse,
++      total_seconds: 0,
++      last_status_change: openedAt,
++      is_timer_active: createdIsTimerActive
+     });
+ 
+     if (!error) {
+@@ -3558,14 +3945,57 @@ export const App: React.FC = () => {
+         ...workOrder,
+         id,
+         openedAt,
+-        createdBy: user?.name || 'Sistema'
++        createdBy: user?.name || 'Sistema',
++        status: createdStatus,
++        totalSeconds: 0,
++        lastStatusChange: openedAt,
++        isTimerActive: createdIsTimerActive
+       };
+       setWorkOrders(prev => [newOrder, ...prev]);
+       showNotification(`OS ${id} criada com sucesso!`, 'success');
+       return id;
+     } else {
+-      showNotification('Erro ao criar OS', 'error');
+-      return null;
++      const fallbackOrder: WorkOrder = {
++        ...workOrder,
++        id,
++        openedAt,
++        createdBy: user?.name || 'Sistema',
++        status: createdStatus,
++        totalSeconds: 0,
++        lastStatusChange: openedAt,
++        isTimerActive: createdIsTimerActive
++      };
++      setWorkOrders(prev => [fallbackOrder, ...prev]);
++      showNotification('OS criada localmente (falha ao persistir no backend).', 'warning');
++      return id;
++    }
++  };
++
++  const handleUpdateWorkOrder = async (orderId: string, updates: Partial<WorkOrder>) => {
++    const { error } = await api.from('work_orders').eq('id', orderId).update({
++      vehicle_plate: updates.vehiclePlate,
++      vehicle_model: updates.vehicleModel,
++      status: updates.status,
++      type: updates.type,
++      priority: updates.priority,
++      mechanic_id: updates.mechanicId,
++      mechanic_name: updates.mechanicName,
++      description: updates.description,
++      services: updates.services,
++      parts: updates.parts,
++      estimated_hours: updates.estimatedHours,
++      cost_center: updates.costCenter,
++      cost_labor: updates.cost?.labor,
++      cost_parts: updates.cost?.parts,
++      cost_third_party: updates.cost?.thirdParty,
++      cost_total: updates.cost?.total,
++    });
++
++    if (!error) {
++      setWorkOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
++      showNotification(`OS ${orderId} atualizada com sucesso!`, 'success');
++    } else {
++      showNotification('Erro ao atualizar OS', 'error');
+     }
+   };
+ 
+@@ -3588,34 +4018,22 @@ export const App: React.FC = () => {
+   const handleCreateMechanic = async (mechanicData: Omit<Mechanic, 'id' | 'productivity' | 'currentWorkOrders'>) => {
+     const id = `MEC-${Date.now()}`;
+     
+-    const { error } = await api.from('mechanics').insert({
++    // Simulação de chamada API
++    // Na prática, substituiria por: const { error } = await api.from('mechanics').insert({...})
++    
++    const newMechanic: Mechanic = {
++      ...mechanicData,
+       id,
+-      name: mechanicData.name,
+-      specialty: mechanicData.specialty,
+-      shift: mechanicData.shift,
+-      status: mechanicData.status,
+-      current_work_orders: [],
+-      orders_completed: 0,
+-      avg_hours_per_order: 0,
+-      on_time_rate: 100
+-    });
+-
+-    if (!error) {
+-      const newMechanic: Mechanic = {
+-        ...mechanicData,
+-        id,
+-        currentWorkOrders: [],
+-        productivity: {
+-          ordersCompleted: 0,
+-          avgHoursPerOrder: 0,
+-          onTimeRate: 100
+-        }
+-      };
+-      setMechanics(prev => [...prev, newMechanic]);
+-      showNotification('Mecânico cadastrado com sucesso!', 'success');
+-    } else {
+-      showNotification('Erro ao cadastrar mecânico', 'error');
+-    }
++      currentWorkOrders: [],
++      productivity: {
++        ordersCompleted: 0,
++        avgHoursPerOrder: 0,
++        onTimeRate: 100
++      }
++    };
++    
++    setMechanics(prev => [...prev, newMechanic]);
++    showNotification('Mecânico cadastrado com sucesso!', 'success');
+   };
+ 
+   // Early returns after all handlers
+@@ -3880,7 +4298,7 @@ export const App: React.FC = () => {
+           <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 lg:px-6 py-3">
+             <div className="flex flex-wrap gap-2">
+               <button
+-                onClick={() => setWorkshopActiveModule('dashboard')}
++                onClick={() => navigateWorkshopModule('dashboard')}
+                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                   workshopActiveModule === 'dashboard'
+                     ? 'bg-blue-500 text-white'
+@@ -3890,7 +4308,7 @@ export const App: React.FC = () => {
+                 Dashboard
+               </button>
+               <button
+-                onClick={() => setWorkshopActiveModule('orders')}
++                onClick={() => navigateWorkshopModule('orders')}
+                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                   workshopActiveModule === 'orders'
+                     ? 'bg-blue-500 text-white'
+@@ -3900,7 +4318,7 @@ export const App: React.FC = () => {
+                 Ordens de Serviço
+               </button>
+               <button
+-                onClick={() => setWorkshopActiveModule('mechanics')}
++                onClick={() => navigateWorkshopModule('mechanics')}
+                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                   workshopActiveModule === 'mechanics'
+                     ? 'bg-blue-500 text-white'
+@@ -3910,7 +4328,7 @@ export const App: React.FC = () => {
+                 Mecânicos
+               </button>
+               <button
+-                onClick={() => setWorkshopActiveModule('preventive')}
++                onClick={() => navigateWorkshopModule('preventive')}
+                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                   workshopActiveModule === 'preventive'
+                     ? 'bg-blue-500 text-white'
+@@ -3920,7 +4338,7 @@ export const App: React.FC = () => {
+                 Preventiva
+               </button>
+               <button
+-                onClick={() => setWorkshopActiveModule('plans')}
++                onClick={() => navigateWorkshopModule('plans')}
+                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                   workshopActiveModule === 'plans'
+                     ? 'bg-blue-500 text-white'
+@@ -3930,7 +4348,7 @@ export const App: React.FC = () => {
+                 Planos de Manutenção
+               </button>
+               <button
+-                onClick={() => setWorkshopActiveModule('checklists')}
++                onClick={() => navigateWorkshopModule('checklists')}
+                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                   workshopActiveModule === 'checklists'
+                     ? 'bg-blue-500 text-white'
+@@ -3939,16 +4357,6 @@ export const App: React.FC = () => {
+               >
+                 Checklists
+               </button>
+-              <button
+-                onClick={() => setWorkshopActiveModule('frota')}
+-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+-                  workshopActiveModule === 'frota'
+-                    ? 'bg-blue-500 text-white'
+-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+-                }`}
+-              >
+-                Frota
+-              </button>
+             </div>
+           </div>
+ 
+@@ -3969,20 +4377,38 @@ export const App: React.FC = () => {
+                   kpis={workshopKPIs}
+                   workOrders={workOrders}
+                   mechanics={mechanics}
+-                  onNavigateToOrders={() => setWorkshopActiveModule('orders')}
+-                  onNavigateToMechanics={() => setWorkshopActiveModule('mechanics')}
+-                  onNavigateToMaintenance={() => setWorkshopActiveModule('preventive')}
++                  onNavigateToOrders={() => navigateWorkshopModule('orders')}
++                  onNavigateToMechanics={() => navigateWorkshopModule('mechanics')}
++                  onNavigateToMaintenance={() => navigateWorkshopModule('preventive')}
+                 />
+               )}
+               {workshopActiveModule === 'orders' && (
+-                <WorkOrderKanban
+-                  workOrders={workOrders}
+-                  mechanics={mechanics}
+-                  onUpdateStatus={handleUpdateWorkOrderStatus}
+-                  onAssignMechanic={handleAssignMechanic}
+-                  onCreateOrder={() => {}}
+-                  onViewOrder={(order) => {}}
+-                />
++                <WorkshopErrorBoundary
++                  resetKey={workshopActiveModule}
++                  onError={(error, info) => {
++                    console.error('Erro na tela de ordens de servico', { error, info });
++                    showNotification('Falha ao carregar ordens de serviço. Redirecionando...', 'error');
++                    setWorkshopActiveModule('dashboard');
++                  }}
++                >
++                  <WorkOrderKanban
++                    workOrders={workOrders}
++                    mechanics={mechanics}
++                    vehicles={vehicles}
++                    onUpdateStatus={handleUpdateWorkOrderStatus}
++                    onUpdateOrder={handleUpdateWorkOrder}
++                    onAssignMechanic={handleAssignMechanic}
++                    onCreateOrder={handleCreateWorkOrder}
++                    onViewOrder={(order) => {}}
++                    onLockOrder={handleLockWorkOrder}
++                    onUnlockOrder={handleUnlockWorkOrder}
++                    currentUserId={user?.id}
++                    onError={(message, error) => {
++                      console.error('Erro na oficina', { message, error });
++                      showNotification(message, 'error');
++                    }}
++                  />
++                </WorkshopErrorBoundary>
+               )}
+               {workshopActiveModule === 'mechanics' && (
+                 <MechanicsManagement
+@@ -4005,22 +4431,23 @@ export const App: React.FC = () => {
+               {workshopActiveModule === 'vehicles' && selectedVehicle && (
+                 <VehicleDetailView
+                   vehicle={selectedVehicle}
+-                  onBack={() => setWorkshopActiveModule('preventive')}
+-                  onCreateMaintenance={() => setWorkshopActiveModule('plans')}
++                  onBack={() => navigateWorkshopModule('preventive')}
++                  onCreateMaintenance={() => navigateWorkshopModule('plans')}
+                   onViewEvent={(event) => {}}
+                 />
+               )}
+               {workshopActiveModule === 'plans' && (
+                 <MaintenancePlanWizard
+                   onSave={handleCreateMaintenancePlan}
+-                  onCancel={() => setWorkshopActiveModule('preventive')}
++                  onCancel={() => navigateWorkshopModule('preventive')}
+                   availableVehicles={vehicles.map(v => ({ model: v.model, type: v.type }))}
++                  inventory={inventory}
+                 />
+               )}
+               {workshopActiveModule === 'schedules' && selectedSchedule && (
+                 <ScheduleDetail
+                   schedule={selectedSchedule}
+-                  onBack={() => setWorkshopActiveModule('preventive')}
++                  onBack={() => navigateWorkshopModule('preventive')}
+                   onExportPDF={() => showNotification('PDF exportado!', 'success')}
+                   onScheduleAppointment={() => showNotification('Agendamento solicitado!', 'success')}
+                   onViewCalendar={() => {}}
+@@ -4029,27 +4456,29 @@ export const App: React.FC = () => {
+               {workshopActiveModule === 'checklists' && (
+                 <InspectionChecklistEditor
+                   onSave={handleSaveInspectionTemplate}
+-                  onCancel={() => setWorkshopActiveModule('dashboard')}
++                  onCancel={() => navigateWorkshopModule('dashboard')}
+                   availableModels={vehicles.map(v => v.model)}
+                 />
+               )}
+-              {workshopActiveModule === 'frota' && (
+-                <VehicleManagement
+-                  vehicles={vehicles}
+-                  vehicleDetails={vehicleDetails}
+-                  inventory={inventory.filter(i => i.warehouseId === activeWarehouse)}
+-                  onAddVehicle={handleAddVehicle}
+-                  onUpdateVehicle={handleUpdateVehicle}
+-                  onDeleteVehicle={handleDeleteVehicle}
+-                  onSyncFleetAPI={handleSyncFleetAPI}
+-                  onRequestParts={handleRequestPartsFromWorkshop}
+-                  onImportVehicles={handleImportVehicles}
+-                />
+-              )}
+             </Suspense>
+           </main>
+         </div>
+       )}
++
++      {currentSystemModule === 'fleet' && (
++        <Suspense
++          fallback={
++            <div className="w-full h-full flex items-center justify-center">
++              <div className="flex items-center gap-3 text-slate-500">
++                <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
++                <span className="text-xs font-black uppercase tracking-wider">Carregando módulo de frota...</span>
++              </div>
++            </div>
++          }
++        >
++          <FleetModule />
++        </Suspense>
++      )}
+     </div>
+   );
+ };

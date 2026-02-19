@@ -1,0 +1,24 @@
+﻿diff --git a/pages/workshop/ScheduleDetail.tsx b/pages/workshop/ScheduleDetail.tsx
+index b43c755..34de557 100644
+--- a/pages/workshop/ScheduleDetail.tsx
++++ b/pages/workshop/ScheduleDetail.tsx
+@@ -1,4 +1,4 @@
+-import React from 'react';
++﻿import React from 'react';
+ import { PreventiveSchedule, MaintenanceMilestone, SystemHealth } from '../../types';
+ 
+ interface ScheduleDetailProps {
+@@ -53,7 +53,7 @@ export const ScheduleDetail: React.FC<ScheduleDetailProps> = ({
+               <span className="px-3 py-1 bg-slate-900 text-white text-sm rounded-lg">{schedule.vehiclePlate}</span>
+             </h1>
+             <p className="text-slate-500 dark:text-slate-400 mt-1">
+-              {schedule.vehicleModel} • Plano de {schedule.planName} • Próxima parada estimada para 15 Nov 2023
++              {schedule.vehicleModel} â€¢ Plano de {schedule.planName} â€¢ Próxima parada estimada para 15 Nov 2023
+             </p>
+           </div>
+           <div className="flex gap-3">
+@@ -318,3 +318,4 @@ export const ScheduleDetail: React.FC<ScheduleDetailProps> = ({
+ };
+ 
+ export default ScheduleDetail;
++
