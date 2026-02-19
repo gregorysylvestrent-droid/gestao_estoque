@@ -1271,11 +1271,10 @@ export const App: React.FC = () => {
 
     try {
       const [countResponse, rowsResponse] = await Promise.all([
-        api.from('inventory/count').eq('warehouse_id', activeWarehouse).execute(),
+        api.from('inventory/count').execute(),
         api
           .from('inventory')
           .select('*')
-          .eq('warehouse_id', activeWarehouse)
           .order('created_at', { ascending: false })
           .limit(MASTER_DATA_ITEMS_PAGE_SIZE + 1)
           .offset((safePage - 1) * MASTER_DATA_ITEMS_PAGE_SIZE),
@@ -4901,8 +4900,8 @@ export const App: React.FC = () => {
               <button
                 onClick={() => navigateWorkshopModule('dashboard')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${workshopActiveModule === 'dashboard'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
               >
                 Dashboard
@@ -4910,8 +4909,8 @@ export const App: React.FC = () => {
               <button
                 onClick={() => navigateWorkshopModule('panel')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${workshopActiveModule === 'panel'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
               >
                 Painel
@@ -4919,8 +4918,8 @@ export const App: React.FC = () => {
               <button
                 onClick={() => navigateWorkshopModule('orders')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${workshopActiveModule === 'orders'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
               >
                 Ordens de Serviço
@@ -4928,8 +4927,8 @@ export const App: React.FC = () => {
               <button
                 onClick={() => navigateWorkshopModule('mechanics')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${workshopActiveModule === 'mechanics'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
               >
                 Mecânicos
@@ -4937,8 +4936,8 @@ export const App: React.FC = () => {
               <button
                 onClick={() => navigateWorkshopModule('productivity')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${workshopActiveModule === 'productivity'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
               >
                 Produtividade
@@ -4946,8 +4945,8 @@ export const App: React.FC = () => {
               <button
                 onClick={() => navigateWorkshopModule('preventive')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${workshopActiveModule === 'preventive'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
               >
                 Preventiva
@@ -4955,8 +4954,8 @@ export const App: React.FC = () => {
               <button
                 onClick={() => navigateWorkshopModule('plans')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${workshopActiveModule === 'plans'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
               >
                 Planos de Manutenção
@@ -4964,8 +4963,8 @@ export const App: React.FC = () => {
               <button
                 onClick={() => navigateWorkshopModule('checklists')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${workshopActiveModule === 'checklists'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
               >
                 Checklists
