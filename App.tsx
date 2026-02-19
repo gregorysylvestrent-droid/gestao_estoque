@@ -1271,10 +1271,16 @@ export const App: React.FC = () => {
 
     try {
       const [countResponse, rowsResponse] = await Promise.all([
-        api.from('inventory/count').execute(),
+        api
+          .from('inventory/count')
+          .eq('warehouse_id', 'all')
+          .eq('include_global', true)
+          .execute(),
         api
           .from('inventory')
           .select('*')
+          .eq('warehouse_id', 'all')
+          .eq('include_global', true)
           .order('created_at', { ascending: false })
           .limit(MASTER_DATA_ITEMS_PAGE_SIZE + 1)
           .offset((safePage - 1) * MASTER_DATA_ITEMS_PAGE_SIZE),
