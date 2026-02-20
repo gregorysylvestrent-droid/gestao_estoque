@@ -1269,32 +1269,81 @@ export const App: React.FC = () => {
     const requestId = ++pageFetchSequence.current.masterDataItems;
     setIsMasterDataItemsPageLoading(true);
 
+    const offset = (safePage - 1) * MASTER_DATA_ITEMS_PAGE_SIZE;
+    const pageLimit = MASTER_DATA_ITEMS_PAGE_SIZE + 1;
+
+    const runInventoryPageQuery = async (
+      strategy: 'unscoped' | 'warehouse' | 'all'
+    ): Promise<{ rows: any[]; error: any; strategy: 'unscoped' | 'warehouse' | 'all' }> => {
+      let query = api
+        .from('inventory')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(pageLimit)
+        .offset(offset);
+
+      if (strategy === 'warehouse') {
+        query = query.eq('warehouse_id', activeWarehouse);
+      }
+
+      if (strategy === 'all') {
+        query = query.eq('warehouse_id', 'all');
+      }
+
+      const response = await query;
+      const rows = Array.isArray((response as any)?.data) ? (response as any).data : [];
+      return {
+        rows,
+        error: (response as any)?.error,
+        strategy,
+      };
+    };
+
     try {
-      const [countResponse, rowsResponse] = await Promise.all([
-        api
-          .from('inventory/count')
-          .eq('warehouse_id', 'all')
-          .eq('include_global', true)
-          .execute(),
-        api
-          .from('inventory')
-          .select('*')
-          .eq('warehouse_id', 'all')
-          .eq('include_global', true)
-          .order('created_at', { ascending: false })
-          .limit(MASTER_DATA_ITEMS_PAGE_SIZE + 1)
-          .offset((safePage - 1) * MASTER_DATA_ITEMS_PAGE_SIZE),
-      ]);
+      const strategies: Array<'unscoped' | 'warehouse' | 'all'> = ['unscoped', 'warehouse', 'all'];
+      let selectedRows: any[] = [];
+      let selectedStrategy: 'unscoped' | 'warehouse' | 'all' = 'unscoped';
+
+      for (const strategy of strategies) {
+        const { rows, error } = await runInventoryPageQuery(strategy);
+        if (error) {
+          console.warn(`Consulta inventory falhou na estrategia ${strategy}:`, error);
+          continue;
+        }
+
+        // Escolhe sempre a estratégia com mais resultados para evitar escopo indevido.
+        if (rows.length >= selectedRows.length) {
+          selectedRows = rows;
+          selectedStrategy = strategy;
+        }
+      }
 
       if (requestId !== pageFetchSequence.current.masterDataItems) return;
 
-      const total = Number((countResponse as any)?.data?.total || 0);
-      setMasterDataItemsTotal(Number.isFinite(total) ? total : 0);
-
-      const rows = Array.isArray((rowsResponse as any)?.data) ? (rowsResponse as any).data : [];
-      const mapped = mapInventoryRows(rows);
+      const mapped = mapInventoryRows(selectedRows);
       setHasMoreMasterDataItems(mapped.length > MASTER_DATA_ITEMS_PAGE_SIZE);
       setPagedMasterDataItems(mapped.slice(0, MASTER_DATA_ITEMS_PAGE_SIZE));
+
+      // Count é best-effort: se falhar, usa ao menos o tamanho da página carregada.
+      let total = mapped.length;
+      try {
+        let countQuery = api.from('inventory/count');
+        if (selectedStrategy === 'warehouse') {
+          countQuery = countQuery.eq('warehouse_id', activeWarehouse);
+        } else if (selectedStrategy === 'all') {
+          countQuery = countQuery.eq('warehouse_id', 'all');
+        }
+
+        const countResponse = await countQuery.execute();
+        const parsedTotal = Number((countResponse as any)?.data?.total || 0);
+        if (Number.isFinite(parsedTotal) && parsedTotal > 0) {
+          total = parsedTotal;
+        }
+      } catch (countError) {
+        console.warn('Falha ao obter contagem de inventory; usando total parcial da página.', countError);
+      }
+
+      setMasterDataItemsTotal(total);
     } catch (error) {
       if (requestId !== pageFetchSequence.current.masterDataItems) return;
       console.error('Erro ao carregar pagina do cadastro de itens:', error);
