@@ -70,6 +70,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
   const [formData, setFormData] = useState<any>({});
   const [localItemsPage, setLocalItemsPage] = useState(1);
   const [localVendorsPage, setLocalVendorsPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (activeTab === 'itens' && inventoryPagination) {
@@ -80,34 +81,73 @@ export const MasterData: React.FC<MasterDataProps> = ({
     }
     setLocalItemsPage(1);
     setLocalVendorsPage(1);
+    setSearchTerm('');
   }, [activeTab, inventoryPagination, vendorsPagination]);
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const normalizedSearchDigits = normalizeDigits(searchTerm);
+  const isSearching = normalizedSearch.length > 0;
+
+  const filteredInventory = useMemo(() => {
+    if (!isSearching) return inventory;
+    return inventory.filter((item) =>
+      String(item.sku || '').toLowerCase().includes(normalizedSearch) ||
+      String(item.name || '').toLowerCase().includes(normalizedSearch)
+    );
+  }, [inventory, isSearching, normalizedSearch]);
+
+  const filteredVendors = useMemo(() => {
+    if (!isSearching) return vendors;
+    return vendors.filter((vendor) => {
+      const razaoSocial = String(vendor.razaoSocial || vendor.name || '').toLowerCase();
+      const cnpjDigits = normalizeDigits(vendor.cnpj);
+      return razaoSocial.includes(normalizedSearch) || (normalizedSearchDigits && cnpjDigits.includes(normalizedSearchDigits));
+    });
+  }, [vendors, isSearching, normalizedSearch, normalizedSearchDigits]);
 
   const isItemsRemotePagination = Boolean(inventoryPagination);
   const currentPage = inventoryPagination?.currentPage ?? localItemsPage;
   const pageSize = inventoryPagination?.pageSize ?? ITEMS_PER_PAGE;
-  const hasNextPage = inventoryPagination?.hasNextPage ?? currentPage * pageSize < inventory.length;
+  const hasNextPage = isSearching
+    ? false
+    : inventoryPagination?.hasNextPage ?? currentPage * pageSize < filteredInventory.length;
   const isPageLoading = inventoryPagination?.isLoading ?? false;
-  const itemCount = inventoryPagination?.totalItems ?? inventory.length;
+  const itemCount = isSearching ? filteredInventory.length : inventoryPagination?.totalItems ?? inventory.length;
 
   const isVendorsRemotePagination = Boolean(vendorsPagination);
   const vendorsCurrentPage = vendorsPagination?.currentPage ?? localVendorsPage;
   const vendorsPageSize = vendorsPagination?.pageSize ?? ITEMS_PER_PAGE;
-  const vendorsHasNextPage =
-    vendorsPagination?.hasNextPage ?? vendorsCurrentPage * vendorsPageSize < vendors.length;
+  const vendorsHasNextPage = isSearching
+    ? false
+    : vendorsPagination?.hasNextPage ?? vendorsCurrentPage * vendorsPageSize < filteredVendors.length;
   const isVendorsLoading = vendorsPagination?.isLoading ?? false;
-  const vendorsCount = vendorsPagination?.totalItems ?? vendors.length;
+  const vendorsCount = isSearching ? filteredVendors.length : vendorsPagination?.totalItems ?? vendors.length;
 
   const displayedInventory = useMemo(() => {
-    if (isItemsRemotePagination) return inventory;
+    if (isItemsRemotePagination) return filteredInventory;
     const start = (localItemsPage - 1) * ITEMS_PER_PAGE;
-    return inventory.slice(start, start + ITEMS_PER_PAGE);
-  }, [isItemsRemotePagination, inventory, localItemsPage]);
+    return filteredInventory.slice(start, start + ITEMS_PER_PAGE);
+  }, [isItemsRemotePagination, filteredInventory, localItemsPage]);
 
   const displayedVendors = useMemo(() => {
-    if (isVendorsRemotePagination) return vendors;
+    if (isVendorsRemotePagination) return filteredVendors;
     const start = (localVendorsPage - 1) * ITEMS_PER_PAGE;
-    return vendors.slice(start, start + ITEMS_PER_PAGE);
-  }, [isVendorsRemotePagination, vendors, localVendorsPage]);
+    return filteredVendors.slice(start, start + ITEMS_PER_PAGE);
+  }, [isVendorsRemotePagination, filteredVendors, localVendorsPage]);
+
+  useEffect(() => {
+    if (!isSearching) return;
+
+    if (activeTab === 'itens') {
+      if (inventoryPagination) inventoryPagination.onPageChange(1);
+      else setLocalItemsPage(1);
+    }
+
+    if (activeTab === 'fornecedores') {
+      if (vendorsPagination) vendorsPagination.onPageChange(1);
+      else setLocalVendorsPage(1);
+    }
+  }, [activeTab, isSearching, searchTerm, inventoryPagination, vendorsPagination]);
 
   const handleInventoryPageChange = (page: number) => {
     const safePage = Math.max(1, page);
@@ -327,8 +367,8 @@ export const MasterData: React.FC<MasterDataProps> = ({
         <button
           onClick={() => setActiveTab('itens')}
           className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'itens'
-              ? 'bg-white dark:bg-slate-900 text-primary shadow-sm'
-              : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            ? 'bg-white dark:bg-slate-900 text-primary shadow-sm'
+            : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
         >
           itens
@@ -340,8 +380,8 @@ export const MasterData: React.FC<MasterDataProps> = ({
         <button
           onClick={() => setActiveTab('fornecedores')}
           className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'fornecedores'
-              ? 'bg-white dark:bg-slate-900 text-primary shadow-sm'
-              : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            ? 'bg-white dark:bg-slate-900 text-primary shadow-sm'
+            : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
         >
           fornecedores
@@ -349,6 +389,32 @@ export const MasterData: React.FC<MasterDataProps> = ({
             {vendorsCount}
           </span>
         </button>
+      </div>
+
+      <div className="relative max-w-xl">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder={
+            activeTab === 'itens'
+              ? 'Buscar por SKU ou Nome do item...'
+              : 'Buscar por Razão Social ou CNPJ...'
+          }
+          className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-700 dark:text-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            aria-label="Limpar busca"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800 shadow-sm overflow-hidden">
