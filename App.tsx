@@ -1039,10 +1039,15 @@ export const App: React.FC = () => {
     warehouseId: item.warehouse_id || 'ARMZ28'
   }));
 
+  const isSeedTestInventoryItem = (item: Partial<InventoryItem>) => {
+    const sku = String(item.sku || '').trim().toUpperCase();
+    const name = String(item.name || '').trim().toLowerCase();
+    return /^SKU-\d{6}$/.test(sku) && name.startsWith('item teste');
+  };
+
   const inferMovementSignedQuantity = (movement: any) => {
-    const qty = Number(movement?.quantity || 0);
-    const type = String(movement?.type || '').toLowerCase();
-    if (!Number.isFinite(qty)) return 0;
+    const qty = toFiniteNumber(movement?.quantity, movement?.qty, movement?.quantidade);
+    const type = normalizeMovementType(movement?.type);
 
     if (type === 'entrada') return Math.abs(qty);
     if (type === 'saida') return -Math.abs(qty);
@@ -1052,23 +1057,59 @@ export const App: React.FC = () => {
     return Math.abs(qty);
   };
 
-  const mergeInventoryWithMovementBalances = (items: InventoryItem[], movementRows: any[]): InventoryItem[] => {
-    if (!Array.isArray(items) || items.length === 0) return items;
-    if (!Array.isArray(movementRows) || movementRows.length === 0) return items;
+  const mergeInventoryWithMovementBalances = (items: InventoryItem[], movementRows: any[], warehouseId: string): InventoryItem[] => {
+    const safeItems = Array.isArray(items) ? items : [];
+    const filteredItems = safeItems.filter((item) => !isSeedTestInventoryItem(item));
 
+    if (!Array.isArray(movementRows) || movementRows.length === 0) return filteredItems;
     const balancesBySku = new Map<string, number>();
+    const movementMetaBySku = new Map<string, { name: string; location: string }>();
+
     movementRows.forEach((movement) => {
       const sku = String(movement?.sku || '').trim().toUpperCase();
       if (!sku) return;
       const current = balancesBySku.get(sku) || 0;
       balancesBySku.set(sku, current + inferMovementSignedQuantity(movement));
+
+      if (!movementMetaBySku.has(sku)) {
+        movementMetaBySku.set(sku, {
+          name: String(movement?.product_name || movement?.name || `Item ${sku}`).trim() || `Item ${sku}`,
+          location: String(movement?.location || 'DOCA-01').trim() || 'DOCA-01',
+        });
+      }
     });
 
-    return items.map((item) => {
+    const existingBySku = new Map(filteredItems.map((item) => [String(item.sku || '').trim().toUpperCase(), item]));
+
+    const mergedItems = filteredItems.map((item) => {
       const sku = String(item.sku || '').trim().toUpperCase();
       if (!sku || !balancesBySku.has(sku)) return item;
       return { ...item, quantity: balancesBySku.get(sku) || 0 };
     });
+
+    balancesBySku.forEach((balance, sku) => {
+      if (existingBySku.has(sku)) return;
+      const meta = movementMetaBySku.get(sku);
+      mergedItems.push({
+        sku,
+        name: meta?.name || `Item ${sku}`,
+        location: meta?.location || 'DOCA-01',
+        batch: '',
+        expiry: '',
+        quantity: balance,
+        status: 'disponivel',
+        imageUrl: 'https://picsum.photos/seed/placeholder/120/120',
+        category: 'MOVIMENTO',
+        unit: 'UN',
+        minQty: 0,
+        maxQty: 1000,
+        leadTime: 7,
+        safetyStock: 5,
+        warehouseId,
+      });
+    });
+
+    return mergedItems;
   };
 
   const normalizeDigits = (value: unknown) => String(value ?? '').replace(/\D+/g, '');
@@ -1148,7 +1189,7 @@ export const App: React.FC = () => {
       return;
     }
 
-    const baseItems = mapInventoryRows(data.slice(0, safeLimit));
+    const baseItems = mapInventoryRows(data.slice(0, safeLimit)).filter((item) => !isSeedTestInventoryItem(item));
 
     const { data: movementRows } = await api
       .from('movements')
@@ -1156,7 +1197,7 @@ export const App: React.FC = () => {
       .eq('warehouse_id', warehouseId)
       .order('timestamp', { ascending: false });
 
-    setInventory(mergeInventoryWithMovementBalances(baseItems, Array.isArray(movementRows) ? movementRows : []));
+    setInventory(mergeInventoryWithMovementBalances(baseItems, Array.isArray(movementRows) ? movementRows : [], warehouseId));
     setInventoryWarehouseScope(warehouseId);
     setIsInventoryFullyLoaded(data.length <= safeLimit);
   };
@@ -1190,7 +1231,7 @@ export const App: React.FC = () => {
     }
 
     if (collected.length > 0) {
-      setInventoryCatalog(mapInventoryRows(collected));
+      setInventoryCatalog(mapInventoryRows(collected).filter((item) => !isSeedTestInventoryItem(item)));
     }
     setIsInventoryCatalogLoaded(true);
   };
