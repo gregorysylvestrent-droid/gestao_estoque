@@ -2469,7 +2469,8 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateInventoryItem = async (updatedItem: InventoryItem) => {
-    const originalItem = inventory.find(i => i.sku === updatedItem.sku);
+    const targetWarehouseId = updatedItem.warehouseId || activeWarehouse;
+    const originalItem = inventory.find(i => i.sku === updatedItem.sku && i.warehouseId === targetWarehouseId);
     if (originalItem) {
       const diff = updatedItem.quantity - originalItem.quantity;
       if (diff !== 0) {
@@ -2477,30 +2478,52 @@ export const App: React.FC = () => {
       }
     }
 
-    const { error } = await api
+    const inventoryPayload = {
+      name: updatedItem.name,
+      location: updatedItem.location,
+      batch: updatedItem.batch,
+      expiry: updatedItem.expiry,
+      quantity: updatedItem.quantity,
+      status: updatedItem.status,
+      image_url: updatedItem.imageUrl,
+      category: updatedItem.category,
+      unit: updatedItem.unit,
+      min_qty: updatedItem.minQty,
+      max_qty: updatedItem.maxQty,
+      lead_time: updatedItem.leadTime,
+      safety_stock: updatedItem.safetyStock
+    };
+
+    let { error } = await api
       .from('inventory')
       .eq('sku', updatedItem.sku)
-      .eq('warehouse_id', updatedItem.warehouseId || activeWarehouse)
-      .update({
-        name: updatedItem.name,
-        location: updatedItem.location,
-        batch: updatedItem.batch,
-        expiry: updatedItem.expiry,
-        quantity: updatedItem.quantity,
-        status: updatedItem.status,
-        image_url: updatedItem.imageUrl,
-        category: updatedItem.category,
-        unit: updatedItem.unit,
-        min_qty: updatedItem.minQty,
-        max_qty: updatedItem.maxQty,
-        lead_time: updatedItem.leadTime,
-        safety_stock: updatedItem.safetyStock
-      });
+      .eq('warehouse_id', targetWarehouseId)
+      .update(inventoryPayload);
+
+    if (error) {
+      const notFound = String(error?.message || error || '').toLowerCase().includes('nenhum registro encontrado');
+      if (notFound) {
+        const insertResult = await api.from('inventory').insert({
+          sku: updatedItem.sku,
+          warehouse_id: targetWarehouseId,
+          ...inventoryPayload,
+        });
+        error = insertResult?.error || null;
+      }
+    }
 
     if (!error) {
-      const newInventory = inventory.map(i => i.sku === updatedItem.sku ? updatedItem : i);
+      const existsInInventory = inventory.some(i => i.sku === updatedItem.sku && i.warehouseId === targetWarehouseId);
+      const newInventory = existsInInventory
+        ? inventory.map(i => (i.sku === updatedItem.sku && i.warehouseId === targetWarehouseId) ? updatedItem : i)
+        : [...inventory, updatedItem];
       setInventory(newInventory);
-      setInventoryCatalog((prev) => prev.map((i) => (i.sku === updatedItem.sku ? updatedItem : i)));
+
+      setInventoryCatalog((prev) => {
+        const exists = prev.some((i) => i.sku === updatedItem.sku && i.warehouseId === targetWarehouseId);
+        if (exists) return prev.map((i) => (i.sku === updatedItem.sku && i.warehouseId === targetWarehouseId) ? updatedItem : i);
+        return [...prev, updatedItem];
+      });
 
       // Limpeza Proativa de Pedidos AUTO-* 
       // Se o novo saldo já suprir a necessidade (inclusive se min/max mudaram ou apenas a quantidade)
@@ -4881,7 +4904,7 @@ export const App: React.FC = () => {
                 )}
                 {activeModule === 'expedicao' && (
                   <Expedition
-                    inventory={inventoryCatalog.length > 0 ? inventoryCatalog : inventory.filter(i => i.warehouseId === activeWarehouse)}
+                    inventory={inventory.filter(i => i.warehouseId === activeWarehouse)}
                     vehicles={vehicles}
                     requests={pagedMaterialRequests}
                     canApproveRequests={user?.role === 'admin'}
@@ -4915,7 +4938,7 @@ export const App: React.FC = () => {
                     activeWarehouse={activeWarehouse}
                     orders={pagedPurchaseOrders}
                     vendors={vendors}
-                    inventory={inventoryCatalog.length > 0 ? inventoryCatalog : inventory.filter(i => i.warehouseId === activeWarehouse)}
+                    inventory={inventory.filter(i => i.warehouseId === activeWarehouse)}
                     vehicles={vehicles}
                     onCreateOrder={handleCreatePO}
                     onAddQuotes={handleAddQuotes}
