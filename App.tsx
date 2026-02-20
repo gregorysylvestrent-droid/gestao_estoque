@@ -1675,7 +1675,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
-    if (!['compras', 'expedicao', 'estoque'].includes(activeModule)) return;
+    if (!['dashboard', 'compras', 'expedicao', 'estoque'].includes(activeModule)) return;
     if (isInventoryCatalogLoaded) return;
     void loadInventoryCatalog();
   }, [activeModule, user, isInventoryCatalogLoaded]);
@@ -4839,7 +4839,7 @@ export const App: React.FC = () => {
               >
                 {activeModule === 'dashboard' && (
                   <Dashboard
-                    inventory={inventory.filter(i => i.warehouseId === activeWarehouse)}
+                    inventory={inventoryCatalog.length > 0 ? inventoryCatalog : inventory.filter(i => i.warehouseId === activeWarehouse)}
                     activities={activities}
                   />
                 )}
