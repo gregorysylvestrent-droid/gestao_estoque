@@ -124,6 +124,8 @@ export const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [inventoryCatalog, setInventoryCatalog] = useState<InventoryItem[]>([]);
+  const [isInventoryCatalogLoaded, setIsInventoryCatalogLoaded] = useState(false);
   const [inventoryWarehouseScope, setInventoryWarehouseScope] = useState<string>('');
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -1094,6 +1096,40 @@ export const App: React.FC = () => {
     setIsInventoryFullyLoaded(data.length <= safeLimit);
   };
 
+  const loadInventoryCatalog = async () => {
+    const BATCH_SIZE = 2000;
+    const MAX_ROWS = 30000;
+
+    const collected: any[] = [];
+    let offset = 0;
+
+    while (collected.length < MAX_ROWS) {
+      const { data, error } = await api
+        .from('inventory')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(BATCH_SIZE)
+        .offset(offset);
+
+      if (error) {
+        console.error('Erro ao carregar catalogo global de itens:', error);
+        break;
+      }
+
+      const rows = Array.isArray(data) ? data : [];
+      if (rows.length === 0) break;
+
+      collected.push(...rows);
+      if (rows.length < BATCH_SIZE) break;
+      offset += BATCH_SIZE;
+    }
+
+    if (collected.length > 0) {
+      setInventoryCatalog(mapInventoryRows(collected));
+    }
+    setIsInventoryCatalogLoaded(true);
+  };
+
   const loadDeferredDataset = async (
     key: 'purchase_orders' | 'movements' | 'material_requests',
     loader: () => Promise<void>
@@ -1636,6 +1672,13 @@ export const App: React.FC = () => {
       void loadPurchaseOrdersFull();
     }
   }, [activeModule, user, isPurchaseOrdersFullyLoaded]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!['compras', 'expedicao'].includes(activeModule)) return;
+    if (isInventoryCatalogLoaded) return;
+    void loadInventoryCatalog();
+  }, [activeModule, user, isInventoryCatalogLoaded]);
 
   useEffect(() => {
     if (activeModule !== 'movimentacoes') return;
@@ -3646,6 +3689,8 @@ export const App: React.FC = () => {
     setVendorsPage(1);
     setMasterDataItemsTotal(0);
     setVendorsTotal(0);
+    setInventoryCatalog([]);
+    setIsInventoryCatalogLoaded(false);
     fullLoadInFlight.current.clear();
     setUser(null);
     setCurrentSystemModule(null);
@@ -4824,7 +4869,7 @@ export const App: React.FC = () => {
                 )}
                 {activeModule === 'expedicao' && (
                   <Expedition
-                    inventory={inventory.filter(i => i.warehouseId === activeWarehouse)}
+                    inventory={inventoryCatalog.length > 0 ? inventoryCatalog : inventory.filter(i => i.warehouseId === activeWarehouse)}
                     vehicles={vehicles}
                     requests={pagedMaterialRequests}
                     canApproveRequests={user?.role === 'admin'}
@@ -4858,7 +4903,7 @@ export const App: React.FC = () => {
                     activeWarehouse={activeWarehouse}
                     orders={pagedPurchaseOrders}
                     vendors={vendors}
-                    inventory={inventory.filter(i => i.warehouseId === activeWarehouse)}
+                    inventory={inventoryCatalog.length > 0 ? inventoryCatalog : inventory.filter(i => i.warehouseId === activeWarehouse)}
                     vehicles={vehicles}
                     onCreateOrder={handleCreatePO}
                     onAddQuotes={handleAddQuotes}
