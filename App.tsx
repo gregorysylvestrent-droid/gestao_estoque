@@ -1675,7 +1675,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
-    if (!['compras', 'expedicao'].includes(activeModule)) return;
+    if (!['compras', 'expedicao', 'estoque'].includes(activeModule)) return;
     if (isInventoryCatalogLoaded) return;
     void loadInventoryCatalog();
   }, [activeModule, user, isInventoryCatalogLoaded]);
@@ -2491,6 +2491,7 @@ export const App: React.FC = () => {
     if (!error) {
       const newInventory = inventory.map(i => i.sku === updatedItem.sku ? updatedItem : i);
       setInventory(newInventory);
+      setInventoryCatalog((prev) => prev.map((i) => (i.sku === updatedItem.sku ? updatedItem : i)));
 
       // Limpeza Proativa de Pedidos AUTO-* 
       // Se o novo saldo já suprir a necessidade (inclusive se min/max mudaram ou apenas a quantidade)
@@ -3726,6 +3727,7 @@ export const App: React.FC = () => {
 
     if (!error) {
       setInventory(prev => prev.map(i => (i.sku === sku && i.warehouseId === targetWarehouseId) ? { ...i, quantity: newQuantity } : i));
+      setInventoryCatalog((prev) => prev.map((i) => (i.sku === sku ? { ...i, quantity: newQuantity } : i)));
       const movementSaved = await recordMovement('saida', item, qty, reason, orderId, targetWarehouseId);
 
       if (!movementSaved) {
@@ -3737,6 +3739,7 @@ export const App: React.FC = () => {
 
         if (!rollbackResult.error) {
           setInventory(prev => prev.map(i => (i.sku === sku && i.warehouseId === targetWarehouseId) ? { ...i, quantity: item.quantity } : i));
+          setInventoryCatalog((prev) => prev.map((i) => (i.sku === sku ? { ...i, quantity: item.quantity } : i)));
         }
 
         showNotification(
@@ -4861,7 +4864,7 @@ export const App: React.FC = () => {
                 )}
                 {activeModule === 'estoque' && (
                   <Inventory
-                    items={inventory.filter(i => i.warehouseId === activeWarehouse)}
+                    items={inventoryCatalog.length > 0 ? inventoryCatalog : inventory.filter(i => i.warehouseId === activeWarehouse)}
                     onUpdateItem={handleUpdateInventoryItem}
                     onCreateAutoPO={handleCreateAutoPO}
                     onRecalculateROP={handleRecalculateROP}
