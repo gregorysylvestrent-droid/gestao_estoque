@@ -1039,6 +1039,38 @@ export const App: React.FC = () => {
     warehouseId: item.warehouse_id || 'ARMZ28'
   }));
 
+  const inferMovementSignedQuantity = (movement: any) => {
+    const qty = Number(movement?.quantity || 0);
+    const type = String(movement?.type || '').toLowerCase();
+    if (!Number.isFinite(qty)) return 0;
+
+    if (type === 'entrada') return Math.abs(qty);
+    if (type === 'saida') return -Math.abs(qty);
+
+    const reason = String(movement?.reason || '').toLowerCase();
+    if (reason.includes('-')) return -Math.abs(qty);
+    return Math.abs(qty);
+  };
+
+  const mergeInventoryWithMovementBalances = (items: InventoryItem[], movementRows: any[]): InventoryItem[] => {
+    if (!Array.isArray(items) || items.length === 0) return items;
+    if (!Array.isArray(movementRows) || movementRows.length === 0) return items;
+
+    const balancesBySku = new Map<string, number>();
+    movementRows.forEach((movement) => {
+      const sku = String(movement?.sku || '').trim().toUpperCase();
+      if (!sku) return;
+      const current = balancesBySku.get(sku) || 0;
+      balancesBySku.set(sku, current + inferMovementSignedQuantity(movement));
+    });
+
+    return items.map((item) => {
+      const sku = String(item.sku || '').trim().toUpperCase();
+      if (!sku || !balancesBySku.has(sku)) return item;
+      return { ...item, quantity: balancesBySku.get(sku) || 0 };
+    });
+  };
+
   const normalizeDigits = (value: unknown) => String(value ?? '').replace(/\D+/g, '');
   const normalizeCnpj = (value: unknown) => normalizeDigits(value).slice(0, 14);
   const normalizePhone = (value: unknown) => {
@@ -1116,7 +1148,15 @@ export const App: React.FC = () => {
       return;
     }
 
-    setInventory(mapInventoryRows(data.slice(0, safeLimit)));
+    const baseItems = mapInventoryRows(data.slice(0, safeLimit));
+
+    const { data: movementRows } = await api
+      .from('movements')
+      .select('*')
+      .eq('warehouse_id', warehouseId)
+      .order('timestamp', { ascending: false });
+
+    setInventory(mergeInventoryWithMovementBalances(baseItems, Array.isArray(movementRows) ? movementRows : []));
     setInventoryWarehouseScope(warehouseId);
     setIsInventoryFullyLoaded(data.length <= safeLimit);
   };
@@ -2396,21 +2436,25 @@ export const App: React.FC = () => {
       }
     }
 
-    const { error } = await api.from('inventory').eq('sku', updatedItem.sku).update({
-      name: updatedItem.name,
-      location: updatedItem.location,
-      batch: updatedItem.batch,
-      expiry: updatedItem.expiry,
-      quantity: updatedItem.quantity,
-      status: updatedItem.status,
-      image_url: updatedItem.imageUrl,
-      category: updatedItem.category,
-      unit: updatedItem.unit,
-      min_qty: updatedItem.minQty,
-      max_qty: updatedItem.maxQty,
-      lead_time: updatedItem.leadTime,
-      safety_stock: updatedItem.safetyStock
-    });
+    const { error } = await api
+      .from('inventory')
+      .eq('sku', updatedItem.sku)
+      .eq('warehouse_id', updatedItem.warehouseId || activeWarehouse)
+      .update({
+        name: updatedItem.name,
+        location: updatedItem.location,
+        batch: updatedItem.batch,
+        expiry: updatedItem.expiry,
+        quantity: updatedItem.quantity,
+        status: updatedItem.status,
+        image_url: updatedItem.imageUrl,
+        category: updatedItem.category,
+        unit: updatedItem.unit,
+        min_qty: updatedItem.minQty,
+        max_qty: updatedItem.maxQty,
+        lead_time: updatedItem.leadTime,
+        safety_stock: updatedItem.safetyStock
+      });
 
     if (!error) {
       const newInventory = inventory.map(i => i.sku === updatedItem.sku ? updatedItem : i);
@@ -4788,7 +4832,7 @@ export const App: React.FC = () => {
                 )}
                 {activeModule === 'estoque' && (
                   <Inventory
-                    items={inventoryCatalog.length > 0 ? inventoryCatalog : inventory.filter(i => i.warehouseId === activeWarehouse)}
+                    items={inventory.filter(i => i.warehouseId === activeWarehouse)}
                     onUpdateItem={handleUpdateInventoryItem}
                     onCreateAutoPO={handleCreateAutoPO}
                     onRecalculateROP={handleRecalculateROP}
