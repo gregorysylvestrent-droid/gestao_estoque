@@ -966,12 +966,37 @@ export const App: React.FC = () => {
     warehouseId: row?.warehouse_id ?? row?.warehouseId ?? undefined,
   });
 
+  const toFiniteNumber = (...values: unknown[]): number => {
+    for (const rawValue of values) {
+      const parsed = Number(rawValue);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+  };
+
+  const normalizeMovementType = (value: unknown): Movement['type'] => {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (normalized === 'entrada' || normalized === 'saida' || normalized === 'ajuste') {
+      return normalized;
+    }
+    if (normalized.includes('entrad')) return 'entrada';
+    if (normalized.includes('saida') || normalized.includes('saída')) return 'saida';
+    return 'ajuste';
+  };
+
   const mapMovements = (rows: any[]): Movement[] => rows.map((m: any) => ({
     id: m.id,
     sku: m.sku,
     productName: m.product_name || m.name || 'Produto Indefinido',
-    type: m.type as Movement['type'],
-    quantity: m.quantity,
+    type: normalizeMovementType(m.type),
+    quantity: toFiniteNumber(
+      m.quantity,
+      m.qty,
+      m.quantidade,
+      m.quantidade_movimentada,
+      m.movement_qty,
+      m.movement_quantity
+    ),
     timestamp: toPtBrDateTime(m.timestamp, formatDateTimePtBR(new Date(), '')),
     user: m.user || 'Sistema',
     location: m.location || 'N/A',
@@ -1000,7 +1025,14 @@ export const App: React.FC = () => {
     location: item.location,
     batch: item.batch,
     expiry: item.expiry,
-    quantity: item.quantity,
+    quantity: toFiniteNumber(
+      item.quantity,
+      item.saldo_fisico_atual,
+      item.saldo_fisico,
+      item.saldo_total,
+      item.physical_balance,
+      item.total_balance
+    ),
     status: item.status,
     imageUrl: item.image_url,
     category: item.category,
