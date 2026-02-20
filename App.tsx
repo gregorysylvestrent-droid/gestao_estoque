@@ -241,7 +241,9 @@ export const App: React.FC = () => {
     type: String(row?.classe ?? row?.type ?? 'PROPRIO'),
     status: normalizeVehicleStatus(row?.status ?? row?.status_operacional ?? 'Disponivel'),
     lastMaintenance: toPtBrDateTime(row?.dta_ult_manutencao ?? row?.last_maintenance, ''),
-    costCenter: String(row?.cod_centro_custo ?? row?.cost_center ?? row?.centro_custo ?? ''),
+    costCenter: String(
+      row?.desc_centro_custo ?? row?.cod_centro_custo ?? row?.cost_center ?? row?.centro_custo ?? ''
+    ),
   });
 
   const normalizeVehicleInput = (vehicle: Partial<Vehicle>): Vehicle | null => {

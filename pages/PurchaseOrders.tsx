@@ -361,6 +361,28 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       .filter(v => (v.plate || '').toLowerCase().includes(search) || (v.model || '').toLowerCase().includes(search))
       .slice(0, 5);
   }, [plate, vehicles, isPlateSearchOpen]);
+
+
+  const normalizePlateToken = (value: string) =>
+    String(value || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+
+  useEffect(() => {
+    const normalizedPlate = normalizePlateToken(plate);
+    if (!normalizedPlate) {
+      setCostCenter('');
+      return;
+    }
+
+    const matchedVehicle = vehicles.find(
+      (vehicle) => normalizePlateToken(String(vehicle.plate || '')) === normalizedPlate
+    );
+
+    if (matchedVehicle) {
+      setCostCenter(String((matchedVehicle as any).desc_centro_custo || matchedVehicle.costCenter || ''));
+    }
+  }, [plate, vehicles]);
   const selectedVehicle = useMemo(() => {
     if (!quotingPO?.plate) return undefined;
     return vehicles.find(v => String(v.plate || '').toUpperCase() === String(quotingPO.plate || '').toUpperCase()) as (Vehicle & {
@@ -2459,474 +2481,474 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
             {renderItemQuotationForms()}
             {false && (
               <>
-            <div className="px-10 pt-6 flex items-center justify-between">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                Cotações abertas: {visibleQuoteForms}/5
-              </p>
-              {quotationMode !== 'analyze' && visibleQuoteForms < 5 && (
-                <button
-                  type="button"
-                  onClick={() => setVisibleQuoteForms((prev) => Math.min(5, prev + 1))}
-                  className="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all"
-                >
-                  + Adicionar Cotação
-                </button>
-              )}
-            </div>
-            <div className="p-10 grid grid-cols-1 lg:grid-cols-3 gap-8 pt-2">
-              {/* Cotação 1 */}
-              <div className="space-y-4 p-6 bg-amber-50 dark:bg-amber-900/10 rounded-3xl border-2 border-amber-200 dark:border-amber-800">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="size-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm font-black">1</span>
-                    <h4 className="text-sm font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest">Primeira Cotação</h4>
-                  </div>
-                  {quotationMode === 'analyze' && quotingPO?.selectedQuoteId === quotingPO?.quotes?.[0]?.id && (
-                    <span className="px-3 py-1 bg-amber-500 text-white text-[9px] font-black rounded-lg uppercase tracking-widest animate-pulse">Sugerido/Selecionado</span>
+                <div className="px-10 pt-6 flex items-center justify-between">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Cotações abertas: {visibleQuoteForms}/5
+                  </p>
+                  {quotationMode !== 'analyze' && visibleQuoteForms < 5 && (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleQuoteForms((prev) => Math.min(5, prev + 1))}
+                      className="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all"
+                    >
+                      + Adicionar Cotação
+                    </button>
                   )}
                 </div>
-
-                <div className="space-y-2 relative" ref={quote1SearchRef}>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fornecedor (CNPJ ou Nome) *</label>
-                  <input
-                    type="text"
-                    value={quote1Search}
-                    onChange={(e) => {
-                      setQuote1Search(e.target.value);
-                      if (quote1Vendor) setQuote1Vendor('');
-                      setIsQuote1SearchOpen(true);
-                    }}
-                    onFocus={() => setIsQuote1SearchOpen(true)}
-                    placeholder="Digite CNPJ ou Nome..."
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-amber-200 dark:border-amber-700 focus:border-amber-500'}`}
-                  />
-                  {isQuote1SearchOpen && quote1Search && !quote1Vendor && (
-                    <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
-                      {vendors.filter(v => {
-                        if ((v.status || '').toLowerCase() !== 'ativo') return false;
-                        const s = quote1Search.toLowerCase().trim();
-                        const sNorm = normalize(s);
-                        const vName = String(v.name || '').toLowerCase();
-                        const vCnpj = String(v.cnpj || '');
-                        const vCnpjNorm = normalize(vCnpj);
-
-                        return vName.includes(s) ||
-                          vCnpj.includes(s) ||
-                          (sNorm.length > 0 && vCnpjNorm.includes(sNorm));
-                      }).map(v => (
-                        <button
-                          key={v.id}
-                          onClick={() => {
-                            setQuote1Vendor(v.id);
-                            setQuote1Search(v.name);
-                            setIsQuote1SearchOpen(false);
-                          }}
-                          className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
-                        >
-                          <p className="text-sm font-black text-slate-800 dark:text-white">{v.name}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">{v.cnpj}</p>
-                        </button>
-                      ))}
+                <div className="p-10 grid grid-cols-1 lg:grid-cols-3 gap-8 pt-2">
+                  {/* Cotação 1 */}
+                  <div className="space-y-4 p-6 bg-amber-50 dark:bg-amber-900/10 rounded-3xl border-2 border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="size-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm font-black">1</span>
+                        <h4 className="text-sm font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest">Primeira Cotação</h4>
+                      </div>
+                      {quotationMode === 'analyze' && quotingPO?.selectedQuoteId === quotingPO?.quotes?.[0]?.id && (
+                        <span className="px-3 py-1 bg-amber-500 text-white text-[9px] font-black rounded-lg uppercase tracking-widest animate-pulse">Sugerido/Selecionado</span>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Total *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={quote1Price}
-                    onChange={e => setQuote1Price(e.target.value)}
-                    placeholder="R$ 0,00"
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70 cursor-not-allowed' : 'border-amber-200 dark:border-amber-700 focus:border-amber-500'}`}
-                  />
-                </div>
+                    <div className="space-y-2 relative" ref={quote1SearchRef}>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fornecedor (CNPJ ou Nome) *</label>
+                      <input
+                        type="text"
+                        value={quote1Search}
+                        onChange={(e) => {
+                          setQuote1Search(e.target.value);
+                          if (quote1Vendor) setQuote1Vendor('');
+                          setIsQuote1SearchOpen(true);
+                        }}
+                        onFocus={() => setIsQuote1SearchOpen(true)}
+                        placeholder="Digite CNPJ ou Nome..."
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-amber-200 dark:border-amber-700 focus:border-amber-500'}`}
+                      />
+                      {isQuote1SearchOpen && quote1Search && !quote1Vendor && (
+                        <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                          {vendors.filter(v => {
+                            if ((v.status || '').toLowerCase() !== 'ativo') return false;
+                            const s = quote1Search.toLowerCase().trim();
+                            const sNorm = normalize(s);
+                            const vName = String(v.name || '').toLowerCase();
+                            const vCnpj = String(v.cnpj || '');
+                            const vCnpjNorm = normalize(vCnpj);
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Prazo de Entrega</label>
-                  <input
-                    type="date"
-                    value={quote1Valid}
-                    onChange={e => setQuote1Valid(e.target.value)}
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70 cursor-not-allowed' : 'border-amber-200 dark:border-amber-700 focus:border-amber-500'}`}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações</label>
-                  <textarea
-                    value={quote1Notes}
-                    onChange={e => setQuote1Notes(e.target.value)}
-                    rows={3}
-                    placeholder="Condições, prazos..."
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all resize-none ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70 cursor-not-allowed' : 'border-amber-200 dark:border-amber-700 focus:border-amber-500'}`}
-                  />
-                </div>
-              </div>
-
-              {/* Cotação 2 */}
-              <div className={`space-y-4 p-6 bg-orange-50 dark:bg-orange-900/10 rounded-3xl border-2 border-orange-200 dark:border-orange-800 ${visibleQuoteForms < 2 ? 'hidden' : ''}`}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="size-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-black">2</span>
-                    <h4 className="text-sm font-black text-orange-700 dark:text-orange-400 uppercase tracking-widest">Segunda Cotação</h4>
-                  </div>
-                  {quotationMode === 'analyze' && quotingPO?.selectedQuoteId === quotingPO?.quotes?.[1]?.id && (
-                    <span className="px-3 py-1 bg-orange-500 text-white text-[9px] font-black rounded-lg uppercase tracking-widest animate-pulse">Sugerido/Selecionado</span>
-                  )}
-                </div>
-
-                <div className="space-y-2 relative" ref={quote2SearchRef}>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fornecedor (CNPJ ou Nome) *</label>
-                  <input
-                    type="text"
-                    value={quote2Search}
-                    onChange={(e) => {
-                      setQuote2Search(e.target.value);
-                      if (quote2Vendor) setQuote2Vendor('');
-                      setIsQuote2SearchOpen(true);
-                    }}
-                    onFocus={() => setIsQuote2SearchOpen(true)}
-                    placeholder="Digite CNPJ ou Nome..."
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-orange-200 dark:border-orange-700 focus:border-orange-500'}`}
-                  />
-                  {isQuote2SearchOpen && quote2Search && !quote2Vendor && (
-                    <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
-                      {vendors.filter(v => {
-                        if ((v.status || '').toLowerCase() !== 'ativo') return false;
-                        const s = quote2Search.toLowerCase().trim();
-                        const sNorm = normalize(s);
-                        const vName = String(v.name || '').toLowerCase();
-                        const vCnpj = String(v.cnpj || '');
-                        const vCnpjNorm = normalize(vCnpj);
-
-                        return vName.includes(s) ||
-                          vCnpj.includes(s) ||
-                          (sNorm.length > 0 && vCnpjNorm.includes(sNorm));
-                      }).map(v => (
-                        <button
-                          key={v.id}
-                          onClick={() => {
-                            setQuote2Vendor(v.id);
-                            setQuote2Search(v.name);
-                            setIsQuote2SearchOpen(false);
-                          }}
-                          className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
-                        >
-                          <p className="text-sm font-black text-slate-800 dark:text-white">{v.name}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">{v.cnpj}</p>
-                        </button>
-                      ))}
+                            return vName.includes(s) ||
+                              vCnpj.includes(s) ||
+                              (sNorm.length > 0 && vCnpjNorm.includes(sNorm));
+                          }).map(v => (
+                            <button
+                              key={v.id}
+                              onClick={() => {
+                                setQuote1Vendor(v.id);
+                                setQuote1Search(v.name);
+                                setIsQuote1SearchOpen(false);
+                              }}
+                              className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
+                            >
+                              <p className="text-sm font-black text-slate-800 dark:text-white">{v.name}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase">{v.cnpj}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Total *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={quote2Price}
-                    onChange={e => setQuote2Price(e.target.value)}
-                    placeholder="R$ 0,00"
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-orange-200 dark:border-orange-700 focus:border-orange-500'}`}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Prazo de Entrega</label>
-                  <input
-                    type="date"
-                    value={quote2Valid}
-                    onChange={e => setQuote2Valid(e.target.value)}
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70 cursor-not-allowed' : 'border-orange-200 dark:border-orange-700 focus:border-orange-500'}`}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações</label>
-                  <textarea
-                    value={quote2Notes}
-                    onChange={e => setQuote2Notes(e.target.value)}
-                    rows={3}
-                    placeholder="Condições, prazos..."
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all resize-none ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-orange-200 dark:border-orange-700 focus:border-orange-500'}`}
-                  />
-                </div>
-              </div>
-
-              {/* Cotação 3 */}
-              <div className={`space-y-4 p-6 bg-red-50 dark:bg-red-900/10 rounded-3xl border-2 border-red-200 dark:border-red-800 ${visibleQuoteForms < 3 ? 'hidden' : ''}`}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="size-8 bg-red-500 text-white rounded-full flex items-center justify-center text-sm font-black">3</span>
-                    <h4 className="text-sm font-black text-red-700 dark:text-red-400 uppercase tracking-widest">Terceira Cotação</h4>
-                  </div>
-                  {quotationMode === 'analyze' && quotingPO?.selectedQuoteId === quotingPO?.quotes?.[2]?.id && (
-                    <span className="px-3 py-1 bg-red-500 text-white text-[9px] font-black rounded-lg uppercase tracking-widest animate-pulse">Sugerido/Selecionado</span>
-                  )}
-                </div>
-
-                <div className="space-y-2 relative" ref={quote3SearchRef}>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fornecedor (CNPJ ou Nome) *</label>
-                  <input
-                    type="text"
-                    value={quote3Search}
-                    onChange={(e) => {
-                      setQuote3Search(e.target.value);
-                      if (quote3Vendor) setQuote3Vendor('');
-                      setIsQuote3SearchOpen(true);
-                    }}
-                    onFocus={() => setIsQuote3SearchOpen(true)}
-                    placeholder="Digite CNPJ ou Nome..."
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-red-200 dark:border-red-700 focus:border-red-500'}`}
-                  />
-                  {isQuote3SearchOpen && quote3Search && !quote3Vendor && (
-                    <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
-                      {vendors.filter(v => {
-                        if ((v.status || '').toLowerCase() !== 'ativo') return false;
-                        const s = quote3Search.toLowerCase().trim();
-                        const sNorm = normalize(s);
-                        const vName = String(v.name || '').toLowerCase();
-                        const vCnpj = String(v.cnpj || '');
-                        const vCnpjNorm = normalize(vCnpj);
-
-                        return vName.includes(s) ||
-                          vCnpj.includes(s) ||
-                          (sNorm.length > 0 && vCnpjNorm.includes(sNorm));
-                      }).map(v => (
-                        <button
-                          key={v.id}
-                          onClick={() => {
-                            setQuote3Vendor(v.id);
-                            setQuote3Search(v.name);
-                            setIsQuote3SearchOpen(false);
-                          }}
-                          className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
-                        >
-                          <p className="text-sm font-black text-slate-800 dark:text-white">{v.name}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">{v.cnpj}</p>
-                        </button>
-                      ))}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Total *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={quote1Price}
+                        onChange={e => setQuote1Price(e.target.value)}
+                        placeholder="R$ 0,00"
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70 cursor-not-allowed' : 'border-amber-200 dark:border-amber-700 focus:border-amber-500'}`}
+                      />
                     </div>
-                  )}
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Total *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={quote3Price}
-                    onChange={e => setQuote3Price(e.target.value)}
-                    placeholder="R$ 0,00"
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-red-200 dark:border-red-700 focus:border-red-500'}`}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Prazo de Entrega</label>
+                      <input
+                        type="date"
+                        value={quote1Valid}
+                        onChange={e => setQuote1Valid(e.target.value)}
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70 cursor-not-allowed' : 'border-amber-200 dark:border-amber-700 focus:border-amber-500'}`}
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TEMPO DE ENTREGA</label>
-                  <input
-                    type="date"
-                    value={quote3Valid}
-                    onChange={e => setQuote3Valid(e.target.value)}
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-red-200 dark:border-red-700 focus:border-red-500'}`}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações</label>
+                      <textarea
+                        value={quote1Notes}
+                        onChange={e => setQuote1Notes(e.target.value)}
+                        rows={3}
+                        placeholder="Condições, prazos..."
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all resize-none ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70 cursor-not-allowed' : 'border-amber-200 dark:border-amber-700 focus:border-amber-500'}`}
+                      />
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações</label>
-                  <textarea
-                    value={quote3Notes}
-                    onChange={e => setQuote3Notes(e.target.value)}
-                    rows={3}
-                    placeholder="Condições, prazos..."
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all resize-none ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-red-200 dark:border-red-700 focus:border-red-500'}`}
-                  />
-                </div>
-              </div>
+                  {/* Cotação 2 */}
+                  <div className={`space-y-4 p-6 bg-orange-50 dark:bg-orange-900/10 rounded-3xl border-2 border-orange-200 dark:border-orange-800 ${visibleQuoteForms < 2 ? 'hidden' : ''}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="size-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-black">2</span>
+                        <h4 className="text-sm font-black text-orange-700 dark:text-orange-400 uppercase tracking-widest">Segunda Cotação</h4>
+                      </div>
+                      {quotationMode === 'analyze' && quotingPO?.selectedQuoteId === quotingPO?.quotes?.[1]?.id && (
+                        <span className="px-3 py-1 bg-orange-500 text-white text-[9px] font-black rounded-lg uppercase tracking-widest animate-pulse">Sugerido/Selecionado</span>
+                      )}
+                    </div>
 
-              <div className={`space-y-4 p-6 bg-violet-50 dark:bg-violet-900/10 rounded-3xl border-2 border-violet-200 dark:border-violet-800 ${visibleQuoteForms < 4 ? 'hidden' : ''}`}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="size-8 bg-violet-500 text-white rounded-full flex items-center justify-center text-sm font-black">4</span>
-                    <h4 className="text-sm font-black text-violet-700 dark:text-violet-400 uppercase tracking-widest">Quarta Cotação</h4>
+                    <div className="space-y-2 relative" ref={quote2SearchRef}>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fornecedor (CNPJ ou Nome) *</label>
+                      <input
+                        type="text"
+                        value={quote2Search}
+                        onChange={(e) => {
+                          setQuote2Search(e.target.value);
+                          if (quote2Vendor) setQuote2Vendor('');
+                          setIsQuote2SearchOpen(true);
+                        }}
+                        onFocus={() => setIsQuote2SearchOpen(true)}
+                        placeholder="Digite CNPJ ou Nome..."
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-orange-200 dark:border-orange-700 focus:border-orange-500'}`}
+                      />
+                      {isQuote2SearchOpen && quote2Search && !quote2Vendor && (
+                        <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                          {vendors.filter(v => {
+                            if ((v.status || '').toLowerCase() !== 'ativo') return false;
+                            const s = quote2Search.toLowerCase().trim();
+                            const sNorm = normalize(s);
+                            const vName = String(v.name || '').toLowerCase();
+                            const vCnpj = String(v.cnpj || '');
+                            const vCnpjNorm = normalize(vCnpj);
+
+                            return vName.includes(s) ||
+                              vCnpj.includes(s) ||
+                              (sNorm.length > 0 && vCnpjNorm.includes(sNorm));
+                          }).map(v => (
+                            <button
+                              key={v.id}
+                              onClick={() => {
+                                setQuote2Vendor(v.id);
+                                setQuote2Search(v.name);
+                                setIsQuote2SearchOpen(false);
+                              }}
+                              className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
+                            >
+                              <p className="text-sm font-black text-slate-800 dark:text-white">{v.name}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase">{v.cnpj}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Total *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={quote2Price}
+                        onChange={e => setQuote2Price(e.target.value)}
+                        placeholder="R$ 0,00"
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-orange-200 dark:border-orange-700 focus:border-orange-500'}`}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Prazo de Entrega</label>
+                      <input
+                        type="date"
+                        value={quote2Valid}
+                        onChange={e => setQuote2Valid(e.target.value)}
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70 cursor-not-allowed' : 'border-orange-200 dark:border-orange-700 focus:border-orange-500'}`}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações</label>
+                      <textarea
+                        value={quote2Notes}
+                        onChange={e => setQuote2Notes(e.target.value)}
+                        rows={3}
+                        placeholder="Condições, prazos..."
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all resize-none ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-orange-200 dark:border-orange-700 focus:border-orange-500'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cotação 3 */}
+                  <div className={`space-y-4 p-6 bg-red-50 dark:bg-red-900/10 rounded-3xl border-2 border-red-200 dark:border-red-800 ${visibleQuoteForms < 3 ? 'hidden' : ''}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="size-8 bg-red-500 text-white rounded-full flex items-center justify-center text-sm font-black">3</span>
+                        <h4 className="text-sm font-black text-red-700 dark:text-red-400 uppercase tracking-widest">Terceira Cotação</h4>
+                      </div>
+                      {quotationMode === 'analyze' && quotingPO?.selectedQuoteId === quotingPO?.quotes?.[2]?.id && (
+                        <span className="px-3 py-1 bg-red-500 text-white text-[9px] font-black rounded-lg uppercase tracking-widest animate-pulse">Sugerido/Selecionado</span>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 relative" ref={quote3SearchRef}>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fornecedor (CNPJ ou Nome) *</label>
+                      <input
+                        type="text"
+                        value={quote3Search}
+                        onChange={(e) => {
+                          setQuote3Search(e.target.value);
+                          if (quote3Vendor) setQuote3Vendor('');
+                          setIsQuote3SearchOpen(true);
+                        }}
+                        onFocus={() => setIsQuote3SearchOpen(true)}
+                        placeholder="Digite CNPJ ou Nome..."
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-red-200 dark:border-red-700 focus:border-red-500'}`}
+                      />
+                      {isQuote3SearchOpen && quote3Search && !quote3Vendor && (
+                        <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                          {vendors.filter(v => {
+                            if ((v.status || '').toLowerCase() !== 'ativo') return false;
+                            const s = quote3Search.toLowerCase().trim();
+                            const sNorm = normalize(s);
+                            const vName = String(v.name || '').toLowerCase();
+                            const vCnpj = String(v.cnpj || '');
+                            const vCnpjNorm = normalize(vCnpj);
+
+                            return vName.includes(s) ||
+                              vCnpj.includes(s) ||
+                              (sNorm.length > 0 && vCnpjNorm.includes(sNorm));
+                          }).map(v => (
+                            <button
+                              key={v.id}
+                              onClick={() => {
+                                setQuote3Vendor(v.id);
+                                setQuote3Search(v.name);
+                                setIsQuote3SearchOpen(false);
+                              }}
+                              className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
+                            >
+                              <p className="text-sm font-black text-slate-800 dark:text-white">{v.name}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase">{v.cnpj}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Total *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={quote3Price}
+                        onChange={e => setQuote3Price(e.target.value)}
+                        placeholder="R$ 0,00"
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-red-200 dark:border-red-700 focus:border-red-500'}`}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TEMPO DE ENTREGA</label>
+                      <input
+                        type="date"
+                        value={quote3Valid}
+                        onChange={e => setQuote3Valid(e.target.value)}
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-red-200 dark:border-red-700 focus:border-red-500'}`}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações</label>
+                      <textarea
+                        value={quote3Notes}
+                        onChange={e => setQuote3Notes(e.target.value)}
+                        rows={3}
+                        placeholder="Condições, prazos..."
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all resize-none ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-red-200 dark:border-red-700 focus:border-red-500'}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={`space-y-4 p-6 bg-violet-50 dark:bg-violet-900/10 rounded-3xl border-2 border-violet-200 dark:border-violet-800 ${visibleQuoteForms < 4 ? 'hidden' : ''}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="size-8 bg-violet-500 text-white rounded-full flex items-center justify-center text-sm font-black">4</span>
+                        <h4 className="text-sm font-black text-violet-700 dark:text-violet-400 uppercase tracking-widest">Quarta Cotação</h4>
+                      </div>
+                    </div>
+                    <div className="space-y-2 relative" ref={quote4SearchRef}>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fornecedor (CNPJ ou Nome) *</label>
+                      <input
+                        type="text"
+                        value={quote4Search}
+                        onChange={(e) => {
+                          setQuote4Search(e.target.value);
+                          if (quote4Vendor) setQuote4Vendor('');
+                          setIsQuote4SearchOpen(true);
+                        }}
+                        onFocus={() => setIsQuote4SearchOpen(true)}
+                        placeholder="Digite CNPJ ou Nome..."
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-violet-200 dark:border-violet-700 focus:border-violet-500'}`}
+                      />
+                      {isQuote4SearchOpen && quote4Search && !quote4Vendor && (
+                        <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                          {vendors.filter(v => {
+                            if ((v.status || '').toLowerCase() !== 'ativo') return false;
+                            const s = quote4Search.toLowerCase().trim();
+                            const sNorm = normalize(s);
+                            const vName = String(v.name || '').toLowerCase();
+                            const vCnpj = String(v.cnpj || '');
+                            const vCnpjNorm = normalize(vCnpj);
+                            return vName.includes(s) || vCnpj.includes(s) || (sNorm.length > 0 && vCnpjNorm.includes(sNorm));
+                          }).map(v => (
+                            <button
+                              key={v.id}
+                              onClick={() => {
+                                setQuote4Vendor(v.id);
+                                setQuote4Search(v.name);
+                                setIsQuote4SearchOpen(false);
+                              }}
+                              className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
+                            >
+                              <p className="text-sm font-black text-slate-800 dark:text-white">{v.name}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase">{v.cnpj}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Total *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={quote4Price}
+                        onChange={e => setQuote4Price(e.target.value)}
+                        placeholder="R$ 0,00"
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-violet-200 dark:border-violet-700 focus:border-violet-500'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Prazo de Entrega</label>
+                      <input
+                        type="date"
+                        value={quote4Valid}
+                        onChange={e => setQuote4Valid(e.target.value)}
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-violet-200 dark:border-violet-700 focus:border-violet-500'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações</label>
+                      <textarea
+                        value={quote4Notes}
+                        onChange={e => setQuote4Notes(e.target.value)}
+                        rows={3}
+                        placeholder="Condições, prazos..."
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all resize-none ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-violet-200 dark:border-violet-700 focus:border-violet-500'}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={`space-y-4 p-6 bg-teal-50 dark:bg-teal-900/10 rounded-3xl border-2 border-teal-200 dark:border-teal-800 ${visibleQuoteForms < 5 ? 'hidden' : ''}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="size-8 bg-teal-500 text-white rounded-full flex items-center justify-center text-sm font-black">5</span>
+                        <h4 className="text-sm font-black text-teal-700 dark:text-teal-400 uppercase tracking-widest">Quinta Cotação</h4>
+                      </div>
+                    </div>
+                    <div className="space-y-2 relative" ref={quote5SearchRef}>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fornecedor (CNPJ ou Nome) *</label>
+                      <input
+                        type="text"
+                        value={quote5Search}
+                        onChange={(e) => {
+                          setQuote5Search(e.target.value);
+                          if (quote5Vendor) setQuote5Vendor('');
+                          setIsQuote5SearchOpen(true);
+                        }}
+                        onFocus={() => setIsQuote5SearchOpen(true)}
+                        placeholder="Digite CNPJ ou Nome..."
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-teal-200 dark:border-teal-700 focus:border-teal-500'}`}
+                      />
+                      {isQuote5SearchOpen && quote5Search && !quote5Vendor && (
+                        <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                          {vendors.filter(v => {
+                            if ((v.status || '').toLowerCase() !== 'ativo') return false;
+                            const s = quote5Search.toLowerCase().trim();
+                            const sNorm = normalize(s);
+                            const vName = String(v.name || '').toLowerCase();
+                            const vCnpj = String(v.cnpj || '');
+                            const vCnpjNorm = normalize(vCnpj);
+                            return vName.includes(s) || vCnpj.includes(s) || (sNorm.length > 0 && vCnpjNorm.includes(sNorm));
+                          }).map(v => (
+                            <button
+                              key={v.id}
+                              onClick={() => {
+                                setQuote5Vendor(v.id);
+                                setQuote5Search(v.name);
+                                setIsQuote5SearchOpen(false);
+                              }}
+                              className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
+                            >
+                              <p className="text-sm font-black text-slate-800 dark:text-white">{v.name}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase">{v.cnpj}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Total *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={quote5Price}
+                        onChange={e => setQuote5Price(e.target.value)}
+                        placeholder="R$ 0,00"
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-teal-200 dark:border-teal-700 focus:border-teal-500'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Prazo de Entrega</label>
+                      <input
+                        type="date"
+                        value={quote5Valid}
+                        onChange={e => setQuote5Valid(e.target.value)}
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-teal-200 dark:border-teal-700 focus:border-teal-500'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações</label>
+                      <textarea
+                        value={quote5Notes}
+                        onChange={e => setQuote5Notes(e.target.value)}
+                        rows={3}
+                        placeholder="Condições, prazos..."
+                        disabled={quotationMode === 'analyze'}
+                        className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all resize-none ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-teal-200 dark:border-teal-700 focus:border-teal-500'}`}
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2 relative" ref={quote4SearchRef}>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fornecedor (CNPJ ou Nome) *</label>
-                  <input
-                    type="text"
-                    value={quote4Search}
-                    onChange={(e) => {
-                      setQuote4Search(e.target.value);
-                      if (quote4Vendor) setQuote4Vendor('');
-                      setIsQuote4SearchOpen(true);
-                    }}
-                    onFocus={() => setIsQuote4SearchOpen(true)}
-                    placeholder="Digite CNPJ ou Nome..."
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-violet-200 dark:border-violet-700 focus:border-violet-500'}`}
-                  />
-                  {isQuote4SearchOpen && quote4Search && !quote4Vendor && (
-                    <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
-                      {vendors.filter(v => {
-                        if ((v.status || '').toLowerCase() !== 'ativo') return false;
-                        const s = quote4Search.toLowerCase().trim();
-                        const sNorm = normalize(s);
-                        const vName = String(v.name || '').toLowerCase();
-                        const vCnpj = String(v.cnpj || '');
-                        const vCnpjNorm = normalize(vCnpj);
-                        return vName.includes(s) || vCnpj.includes(s) || (sNorm.length > 0 && vCnpjNorm.includes(sNorm));
-                      }).map(v => (
-                        <button
-                          key={v.id}
-                          onClick={() => {
-                            setQuote4Vendor(v.id);
-                            setQuote4Search(v.name);
-                            setIsQuote4SearchOpen(false);
-                          }}
-                          className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
-                        >
-                          <p className="text-sm font-black text-slate-800 dark:text-white">{v.name}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">{v.cnpj}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Total *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={quote4Price}
-                    onChange={e => setQuote4Price(e.target.value)}
-                    placeholder="R$ 0,00"
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-violet-200 dark:border-violet-700 focus:border-violet-500'}`}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Prazo de Entrega</label>
-                  <input
-                    type="date"
-                    value={quote4Valid}
-                    onChange={e => setQuote4Valid(e.target.value)}
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-violet-200 dark:border-violet-700 focus:border-violet-500'}`}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações</label>
-                  <textarea
-                    value={quote4Notes}
-                    onChange={e => setQuote4Notes(e.target.value)}
-                    rows={3}
-                    placeholder="Condições, prazos..."
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all resize-none ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-violet-200 dark:border-violet-700 focus:border-violet-500'}`}
-                  />
-                </div>
-              </div>
-
-              <div className={`space-y-4 p-6 bg-teal-50 dark:bg-teal-900/10 rounded-3xl border-2 border-teal-200 dark:border-teal-800 ${visibleQuoteForms < 5 ? 'hidden' : ''}`}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="size-8 bg-teal-500 text-white rounded-full flex items-center justify-center text-sm font-black">5</span>
-                    <h4 className="text-sm font-black text-teal-700 dark:text-teal-400 uppercase tracking-widest">Quinta Cotação</h4>
-                  </div>
-                </div>
-                <div className="space-y-2 relative" ref={quote5SearchRef}>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fornecedor (CNPJ ou Nome) *</label>
-                  <input
-                    type="text"
-                    value={quote5Search}
-                    onChange={(e) => {
-                      setQuote5Search(e.target.value);
-                      if (quote5Vendor) setQuote5Vendor('');
-                      setIsQuote5SearchOpen(true);
-                    }}
-                    onFocus={() => setIsQuote5SearchOpen(true)}
-                    placeholder="Digite CNPJ ou Nome..."
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-teal-200 dark:border-teal-700 focus:border-teal-500'}`}
-                  />
-                  {isQuote5SearchOpen && quote5Search && !quote5Vendor && (
-                    <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
-                      {vendors.filter(v => {
-                        if ((v.status || '').toLowerCase() !== 'ativo') return false;
-                        const s = quote5Search.toLowerCase().trim();
-                        const sNorm = normalize(s);
-                        const vName = String(v.name || '').toLowerCase();
-                        const vCnpj = String(v.cnpj || '');
-                        const vCnpjNorm = normalize(vCnpj);
-                        return vName.includes(s) || vCnpj.includes(s) || (sNorm.length > 0 && vCnpjNorm.includes(sNorm));
-                      }).map(v => (
-                        <button
-                          key={v.id}
-                          onClick={() => {
-                            setQuote5Vendor(v.id);
-                            setQuote5Search(v.name);
-                            setIsQuote5SearchOpen(false);
-                          }}
-                          className="w-full p-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-left border-b border-slate-50 dark:border-slate-800 last:border-0"
-                        >
-                          <p className="text-sm font-black text-slate-800 dark:text-white">{v.name}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">{v.cnpj}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Total *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={quote5Price}
-                    onChange={e => setQuote5Price(e.target.value)}
-                    placeholder="R$ 0,00"
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-teal-200 dark:border-teal-700 focus:border-teal-500'}`}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Prazo de Entrega</label>
-                  <input
-                    type="date"
-                    value={quote5Valid}
-                    onChange={e => setQuote5Valid(e.target.value)}
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-teal-200 dark:border-teal-700 focus:border-teal-500'}`}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações</label>
-                  <textarea
-                    value={quote5Notes}
-                    onChange={e => setQuote5Notes(e.target.value)}
-                    rows={3}
-                    placeholder="Condições, prazos..."
-                    disabled={quotationMode === 'analyze'}
-                    className={`w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 rounded-xl font-bold text-sm transition-all resize-none ${quotationMode === 'analyze' ? 'border-slate-100 dark:border-slate-700 opacity-70' : 'border-teal-200 dark:border-teal-700 focus:border-teal-500'}`}
-                  />
-                </div>
-              </div>
-            </div>
 
               </>
             )}
