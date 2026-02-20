@@ -2501,14 +2501,24 @@ export const App: React.FC = () => {
       .update(inventoryPayload);
 
     if (error) {
-      const notFound = String(error?.message || error || '').toLowerCase().includes('nenhum registro encontrado');
+      const errorMessage = String(error?.message || error || '').toLowerCase();
+      const notFound = errorMessage.includes('nenhum registro encontrado');
       if (notFound) {
-        const insertResult = await api.from('inventory').insert({
-          sku: updatedItem.sku,
-          warehouse_id: targetWarehouseId,
-          ...inventoryPayload,
-        });
-        error = insertResult?.error || null;
+        const fallbackUpdate = await api
+          .from('inventory')
+          .eq('sku', updatedItem.sku)
+          .update({ ...inventoryPayload, warehouse_id: targetWarehouseId });
+
+        error = fallbackUpdate?.error || null;
+
+        if (error) {
+          const insertResult = await api.from('inventory').insert({
+            sku: updatedItem.sku,
+            warehouse_id: targetWarehouseId,
+            ...inventoryPayload,
+          });
+          error = insertResult?.error || null;
+        }
       }
     }
 
@@ -3751,11 +3761,23 @@ export const App: React.FC = () => {
       return false;
     }
 
-    const { error } = await api
+    let { error } = await api
       .from('inventory')
       .eq('sku', sku)
       .eq('warehouse_id', targetWarehouseId)
       .update({ quantity: newQuantity });
+
+    if (error) {
+      const errorMessage = String(error?.message || error || '').toLowerCase();
+      const notFound = errorMessage.includes('nenhum registro encontrado');
+      if (notFound) {
+        const fallbackUpdate = await api
+          .from('inventory')
+          .eq('sku', sku)
+          .update({ quantity: newQuantity, warehouse_id: targetWarehouseId });
+        error = fallbackUpdate?.error || null;
+      }
+    }
 
     if (!error) {
       setInventory(prev => prev.map(i => (i.sku === sku && i.warehouseId === targetWarehouseId) ? { ...i, quantity: newQuantity } : i));
@@ -3784,7 +3806,7 @@ export const App: React.FC = () => {
       showNotification(`Estoque de ${sku} atualizado para ${newQuantity}.`, 'success');
       return true;
     } else {
-      showNotification(`Erro ao atualizar estoque de ${sku}: ${error.message}`, 'error');
+      showNotification(`Erro ao atualizar estoque de ${sku}: ${String(error?.message || error || 'falha desconhecida')}`, 'error');
       return false;
     }
   };
