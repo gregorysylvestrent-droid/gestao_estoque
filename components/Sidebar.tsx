@@ -153,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onModuleChange, 
 
         <div className={`flex flex-col items-center justify-center transition-all duration-500 ${isCollapsed ? 'lg:p-4 p-6 gap-2' : 'p-6 gap-4'}`}>
           <img
-            src={`${import.meta.env.BASE_URL}norte_tech_logo.png`}
+            src="https://teslaeventos.com.br/assets/logos/NORTETECH-CIRCLE.png"
             alt="Norte Tech Logo"
             className={`w-auto drop-shadow-2xl transition-all duration-500 hover:scale-105 ${isCollapsed ? 'lg:h-10 h-16' : 'h-24'}`}
           />
@@ -170,19 +170,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onModuleChange, 
               <button
                 key={item.id}
                 onClick={() => onModuleChange(item.id)}
-                className={`w-full group flex items-center rounded-2xl transition-all duration-300 active:scale-[0.98] ${isCollapsed ? 'lg:p-4 lg:justify-center p-4' : 'px-5 py-3.5'} ${
-                  isActive
+                className={`w-full group flex items-center rounded-2xl transition-all duration-300 active:scale-[0.98] ${isCollapsed ? 'lg:p-4 lg:justify-center p-4' : 'px-5 py-3.5'} ${isActive
                     ? 'bg-primary text-white shadow-xl shadow-primary/25'
                     : 'text-[#617589] hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-primary'
-                }`}
+                  }`}
                 title={isCollapsed ? item.label : ''}
               >
                 <div className={`flex items-center transition-all duration-300 ${isCollapsed ? 'lg:justify-center lg:w-fit w-full gap-4' : 'w-full gap-4'}`}>
                   <SidebarIcon icon={item.icon} isActive={isActive} isCollapsed={isCollapsed} />
                   <span
-                    className={`text-[11px] font-black uppercase tracking-[0.1em] flex-1 text-left whitespace-nowrap transition-all duration-300 ${
-                      isActive ? 'text-white' : 'text-inherit'
-                    } ${isCollapsed ? 'lg:hidden' : ''}`}
+                    className={`text-[11px] font-black uppercase tracking-[0.1em] flex-1 text-left whitespace-nowrap transition-all duration-300 ${isActive ? 'text-white' : 'text-inherit'
+                      } ${isCollapsed ? 'lg:hidden' : ''}`}
                   >
                     {item.label}
                   </span>
@@ -196,11 +194,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onModuleChange, 
           <div className="mt-auto bg-slate-50/50 dark:bg-slate-800/10 p-6 rounded-[2rem] border border-slate-200/50 dark:border-slate-800 transition-all duration-500">
             <button
               onClick={() => onModuleChange('configuracoes')}
-              className={`w-full flex items-center rounded-2xl transition-all duration-300 active:scale-[0.98] ${isCollapsed ? 'lg:p-4 lg:justify-center p-4' : 'px-5 py-4'} ${
-                activeModule === 'configuracoes'
+              className={`w-full flex items-center rounded-2xl transition-all duration-300 active:scale-[0.98] ${isCollapsed ? 'lg:p-4 lg:justify-center p-4' : 'px-5 py-4'} ${activeModule === 'configuracoes'
                   ? 'bg-slate-900 text-white shadow-xl'
                   : 'text-[#617589] hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
-              }`}
+                }`}
               title={isCollapsed ? 'Configurações' : ''}
             >
               <div className={`flex items-center transition-all duration-300 ${isCollapsed ? 'lg:justify-center lg:w-fit w-full gap-4' : 'w-full gap-4'}`}>

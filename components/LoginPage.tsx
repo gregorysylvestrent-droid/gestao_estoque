@@ -123,7 +123,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-right duration-500">
           <div className="flex flex-col items-center mb-10">
             <img
-              src={`${import.meta.env.BASE_URL}norte_tech_logo.png`}
+              src="https://teslaeventos.com.br/assets/logos/NORTETECH-CIRCLE.png"
               alt="Norte Tech Logo"
               className="h-40 w-auto drop-shadow-2xl transition-all duration-700 hover:scale-110 mb-6"
             />

@@ -20,40 +20,40 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ user, onSelectMo
     image: string;
     disabled?: boolean;
   }[] = [
-    {
-      id: 'warehouse',
-      name: 'Armazem',
-      description: 'Gestao de estoque, recebimento, expedicao e inventario',
-      icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-      color: 'from-blue-500 to-blue-600',
-      image: '/warehouse-bg.jpg',
-    },
-    {
-      id: 'workshop',
-      name: 'Oficina',
-      description: 'Ordens de servico, manutencao preventiva e gestao de mecanicos',
-      icon: 'M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.457.4M15 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2',
-      color: 'from-orange-500 to-red-600',
-      image: '/workshop-bg.jpg',
-      disabled: !canAccessWorkshop,
-    },
-    {
-      id: 'fleet',
-      name: 'Gestao de Frota',
-      description: 'Controle de veiculos, condutores, multas, tacografo e relatorios',
-      icon: 'M3 13h2l1.5-4.5A2 2 0 018.4 7h7.2a2 2 0 011.9 1.5L19 13h2a1 1 0 011 1v2a1 1 0 01-1 1h-1a2 2 0 11-4 0H8a2 2 0 11-4 0H3a1 1 0 01-1-1v-2a1 1 0 011-1zm4.5 0h9l-1.1-3.2a.5.5 0 00-.47-.3H8.07a.5.5 0 00-.47.34L6.5 13z',
-      color: 'from-indigo-500 to-cyan-600',
-      image: '/fleet-bg.jpg',
-      disabled: !canAccessFleet,
-    },
-  ];
+      {
+        id: 'warehouse',
+        name: 'Armazem',
+        description: 'Gestao de estoque, recebimento, expedicao e inventario',
+        icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+        color: 'from-blue-500 to-blue-600',
+        image: '/warehouse-bg.jpg',
+      },
+      {
+        id: 'workshop',
+        name: 'Oficina',
+        description: 'Ordens de servico, manutencao preventiva e gestao de mecanicos',
+        icon: 'M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.457.4M15 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2',
+        color: 'from-orange-500 to-red-600',
+        image: '/workshop-bg.jpg',
+        disabled: !canAccessWorkshop,
+      },
+      {
+        id: 'fleet',
+        name: 'Gestao de Frota',
+        description: 'Controle de veiculos, condutores, multas, tacografo e relatorios',
+        icon: 'M3 13h2l1.5-4.5A2 2 0 018.4 7h7.2a2 2 0 011.9 1.5L19 13h2a1 1 0 011 1v2a1 1 0 01-1 1h-1a2 2 0 11-4 0H8a2 2 0 11-4 0H3a1 1 0 01-1-1v-2a1 1 0 011-1zm4.5 0h9l-1.1-3.2a.5.5 0 00-.47-.3H8.07a.5.5 0 00-.47.34L6.5 13z',
+        color: 'from-indigo-500 to-cyan-600',
+        image: '/fleet-bg.jpg',
+        disabled: !canAccessFleet,
+      },
+    ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col">
       <header className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/norte_tech_logo.png" alt="Norte Tech" className="w-10 h-10 object-contain" />
+            <img src="https://teslaeventos.com.br/assets/logos/NORTETECH-CIRCLE.png" alt="Norte Tech" className="w-10 h-10 object-contain" />
             <div>
               <h1 className="text-xl font-bold text-slate-900 dark:text-white">LogiWMS Pro</h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">Sistema Integrado de Gestao</p>
@@ -91,21 +91,18 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ user, onSelectMo
                 key={module.id}
                 onClick={() => !module.disabled && onSelectModule(module.id)}
                 disabled={module.disabled}
-                className={`group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-lg transition-all duration-300 border border-slate-200 dark:border-slate-700 text-left ${
-                  module.disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-2xl'
-                }`}
+                className={`group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-lg transition-all duration-300 border border-slate-200 dark:border-slate-700 text-left ${module.disabled ? 'cursor-not-allowed opacity-60' : 'hover:shadow-2xl'
+                  }`}
               >
                 <div
-                  className={`absolute inset-0 bg-gradient-to-br ${module.color} transition-opacity duration-300 ${
-                    module.disabled ? 'opacity-0' : 'opacity-0 group-hover:opacity-5'
-                  }`}
+                  className={`absolute inset-0 bg-gradient-to-br ${module.color} transition-opacity duration-300 ${module.disabled ? 'opacity-0' : 'opacity-0 group-hover:opacity-5'
+                    }`}
                 />
 
                 <div className="relative p-8">
                   <div
-                    className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${module.color} flex items-center justify-center shadow-lg mb-6 ${
-                      module.disabled ? '' : 'group-hover:scale-110'
-                    } transition-transform duration-300`}
+                    className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${module.color} flex items-center justify-center shadow-lg mb-6 ${module.disabled ? '' : 'group-hover:scale-110'
+                      } transition-transform duration-300`}
                   >
                     <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={module.icon} />

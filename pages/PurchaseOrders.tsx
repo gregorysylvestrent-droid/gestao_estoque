@@ -972,9 +972,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       return Number.isFinite(value) ? value : 0;
     };
 
-    const baseUrl = import.meta.env.BASE_URL || '/';
-    const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-    const logoUrl = `${window.location.origin}${normalizedBaseUrl}norte_tech_logo.png`;
+    const logoUrl = "https://teslaeventos.com.br/assets/logos/NORTETECH-CIRCLE.png";
     const issuedAt = formatDateTimePtBR(new Date(), '--/--/---- --:--:--');
 
     const quotationItemsHtml = quotingPO.items.map((item) => {
