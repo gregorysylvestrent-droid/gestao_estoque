@@ -14,10 +14,19 @@ const KPI_IMAGES = {
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ inventory, activities }) => {
-  const totalVolume = inventory.reduce((acc, item) => acc + item.quantity, 0);
+  const toPositiveNumber = (value: unknown) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 0;
+    return Math.max(0, parsed);
+  };
+
+  const totalVolume = inventory.reduce((acc, item) => acc + toPositiveNumber(item.quantity), 0);
   const criticalItems = inventory.filter((item) => item.quantity < item.minQty);
-  const totalCapacity = inventory.reduce((acc, item) => acc + item.maxQty, 0);
-  const occupancyRate = totalCapacity > 0 ? Math.round((totalVolume / totalCapacity) * 100) : 0;
+  const totalCapacity = inventory.reduce((acc, item) => acc + toPositiveNumber(item.maxQty), 0);
+  const occupancyRate =
+    totalCapacity > 0
+      ? Math.min(100, Math.round((totalVolume / totalCapacity) * 100))
+      : 0;
 
   const dynamicKpis = [
     { label: 'Itens em Alerta', value: criticalItems.length, bg: KPI_IMAGES.alerta },
