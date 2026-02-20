@@ -17,9 +17,9 @@ interface InventoryPagination {
 interface MasterDataProps {
   inventory: InventoryItem[];
   vendors: Vendor[];
-  onAddRecord: (type: 'item' | 'vendor', data: any, isEdit: boolean) => void;
-  onRemoveRecord?: (type: 'item' | 'vendor', id: string) => void;
-  onImportRecords: (type: 'item' | 'vendor', data: any[]) => void;
+  onAddRecord: (type: 'item' | 'vendor' | 'vehicle' | 'cost_center', data: any, isEdit: boolean) => void;
+  onRemoveRecord?: (type: 'item' | 'vendor' | 'vehicle', id: string) => void;
+  onImportRecords: (type: 'item' | 'vendor' | 'vehicle', data: any[]) => void;
   inventoryPagination?: InventoryPagination;
   vendorsPagination?: InventoryPagination;
 }
@@ -326,11 +326,10 @@ export const MasterData: React.FC<MasterDataProps> = ({
       <div className="flex gap-2 p-1.5 bg-slate-200/50 dark:bg-slate-800/40 rounded-2xl w-fit border border-slate-200 dark:border-slate-800 overflow-x-auto max-w-full">
         <button
           onClick={() => setActiveTab('itens')}
-          className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${
-            activeTab === 'itens'
+          className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'itens'
               ? 'bg-white dark:bg-slate-900 text-primary shadow-sm'
               : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-          }`}
+            }`}
         >
           itens
           <span className={`px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === 'itens' ? 'bg-primary/10 text-primary' : 'bg-slate-300/30 text-slate-400'}`}>
@@ -340,11 +339,10 @@ export const MasterData: React.FC<MasterDataProps> = ({
 
         <button
           onClick={() => setActiveTab('fornecedores')}
-          className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${
-            activeTab === 'fornecedores'
+          className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'fornecedores'
               ? 'bg-white dark:bg-slate-900 text-primary shadow-sm'
               : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-          }`}
+            }`}
         >
           fornecedores
           <span className={`px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === 'fornecedores' ? 'bg-primary/10 text-primary' : 'bg-slate-300/30 text-slate-400'}`}>
