@@ -820,38 +820,28 @@ EXECUTE FUNCTION audit_capture_row_change('gestao_frota', 'placa');
 -- Seed principal
 INSERT INTO warehouses (id, name, description, location, manager_name, is_active)
 VALUES
-  ('ARMZ28', 'Armazem Principal', 'Operacoes gerais de armazenamento e distribuicao', 'Manaus - AM', 'Administrador', true),
-  ('ARMZ33', 'Conferencia de Carga em Tempo Real', 'Recebimento, conferencia e validacao de carga', 'Manaus - AM', 'Administrador', true)
+  ('ARMZ28', 'Armazem Manaus', 'Operacoes gerais de armazenamento e distribuicao', 'Manaus - AM', 'Administrador', true),
+  ('ARMZ33', 'Armazem Roraima', 'Recebimento, conferencia e validacao de carga', 'Roraima - RR', 'Administrador', true)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO users (id, name, email, role, status, password, modules, allowed_warehouses)
 VALUES
   (
-    '1',
+    gen_random_uuid()::text,
     'Administrador',
-    'admin@nortetech.com',
+    'admin@nortetech.net',
     'admin',
     'Ativo',
     'pbkdf2$310000$c69ffaeaeaf017b7f94270ab3a61d55b$8d5b4fd072c9044b957eb432bdf26f03ff1b50a7859ca7b370b0f896356f356a',
     '["dashboard","recebimento","movimentacoes","estoque","expedicao","inventario_ciclico","compras","cadastro","relatorios","configuracoes"]'::jsonb,
     '["ARMZ28","ARMZ33"]'::jsonb
-  ),
-  (
-    'ocv3aoy40',
-    'MATIAS',
-    'MATIAS@G.COM',
-    'manager',
-    'Ativo',
-    'pbkdf2$310000$899714a53cee2b0abc6ff8370582e339$77f07c5a4c32bc93fbc7187efe33ffe0df35591f518ff54da92e7e1be1b997f6',
-    '["dashboard","recebimento","movimentacoes","estoque","expedicao","compras","inventario_ciclico","cadastro","relatorios","configuracoes"]'::jsonb,
-    '["ARMZ33"]'::jsonb
   )
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO cost_centers (code, name, manager, budget, status)
 VALUES
   ('CC-LOG', 'Logistica', 'Administrador', 500000.00, 'Ativo'),
-  ('CC-OPS', 'Operacoes', 'MATIAS', 300000.00, 'Ativo'),
+  ('CC-OPS', 'Operacoes', 'teste', 300000.00, 'Ativo'),
   ('CC-MAN', 'Manutencao', 'Administrador', 150000.00, 'Ativo')
 ON CONFLICT (code) DO NOTHING;
 

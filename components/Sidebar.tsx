@@ -158,7 +158,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onModuleChange, 
             className={`w-auto drop-shadow-2xl transition-all duration-500 hover:scale-105 ${isCollapsed ? 'lg:h-10 h-16' : 'h-24'}`}
           />
           <div className={`text-center transition-all duration-500 ${isCollapsed ? 'lg:opacity-0 lg:h-0 lg:scale-90 lg:translate-y-[-10px] lg:pointer-events-none' : 'opacity-100 h-auto scale-100 translate-y-0'}`}>
-            <p className="text-[#617589] text-[11px] font-black uppercase tracking-[0.3em]">Armazém 028</p>
+            <p className="text-[#617589] text-[11px] font-black uppercase tracking-[0.3em]">Menu Principal</p>
             <div className="h-[3px] w-12 bg-primary/40 rounded-full mt-2 mx-auto"></div>
           </div>
         </div>
@@ -171,8 +171,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onModuleChange, 
                 key={item.id}
                 onClick={() => onModuleChange(item.id)}
                 className={`w-full group flex items-center rounded-2xl transition-all duration-300 active:scale-[0.98] ${isCollapsed ? 'lg:p-4 lg:justify-center p-4' : 'px-5 py-3.5'} ${isActive
-                    ? 'bg-primary text-white shadow-xl shadow-primary/25'
-                    : 'text-[#617589] hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-primary'
+                  ? 'bg-primary text-white shadow-xl shadow-primary/25'
+                  : 'text-[#617589] hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-primary'
                   }`}
                 title={isCollapsed ? item.label : ''}
               >
@@ -195,8 +195,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeModule, onModuleChange, 
             <button
               onClick={() => onModuleChange('configuracoes')}
               className={`w-full flex items-center rounded-2xl transition-all duration-300 active:scale-[0.98] ${isCollapsed ? 'lg:p-4 lg:justify-center p-4' : 'px-5 py-4'} ${activeModule === 'configuracoes'
-                  ? 'bg-slate-900 text-white shadow-xl'
-                  : 'text-[#617589] hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-slate-900 text-white shadow-xl'
+                : 'text-[#617589] hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
                 }`}
               title={isCollapsed ? 'Configurações' : ''}
             >
