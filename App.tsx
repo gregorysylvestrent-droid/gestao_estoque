@@ -4798,6 +4798,14 @@ export const App: React.FC = () => {
     showNotification('Mecânico cadastrado com sucesso!', 'success');
   };
 
+  useEffect(() => {
+    if (!user) return;
+    if (user.role === 'admin') return;
+    if (currentSystemModule !== null) return;
+
+    void handleSelectSystemModule('warehouse');
+  }, [user, currentSystemModule]);
+
   // Early returns after all handlers
   if (isLoading) {
     return (
@@ -4814,9 +4822,20 @@ export const App: React.FC = () => {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  // Show Module Selector after login if no system module selected
+  // Show Module Selector only for administrators.
   if (currentSystemModule === null) {
-    return <ModuleSelector user={user} onSelectModule={handleSelectSystemModule} onLogout={logout} />;
+    if (user.role === 'admin') {
+      return <ModuleSelector user={user} onSelectModule={handleSelectSystemModule} onLogout={logout} />;
+    }
+
+    return (
+      <div className="flex items-center justify-center h-screen w-screen bg-slate-900 text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="font-black uppercase tracking-widest text-sm animate-pulse">Carregando ambiente do Armazém...</p>
+        </div>
+      </div>
+    );
   }
 
 
@@ -4847,7 +4866,7 @@ export const App: React.FC = () => {
               onMarkAsRead={markNotificationAsRead}
               onMarkAllAsRead={markAllNotificationsAsRead}
               onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              showBackButton={true}
+              showBackButton={user.role === 'admin'}
               onBackToModules={() => setCurrentSystemModule(null)}
             />
             <main className="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark p-4 lg:p-6 relative">
@@ -4985,6 +5004,7 @@ export const App: React.FC = () => {
                   <MasterData
                     inventory={pagedMasterDataItems}
                     vendors={pagedVendors}
+                    vehicles={vehicles}
                     onAddRecord={handleAddMasterRecord}
                     onRemoveRecord={handleRemoveMasterRecord}
                     onImportRecords={handleImportMasterRecords}

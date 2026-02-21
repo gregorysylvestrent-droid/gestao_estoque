@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { PaginationBar } from '../components/PaginationBar';
-import { InventoryItem, Vendor } from '../types';
+import { InventoryItem, Vendor, Vehicle } from '../types';
 
-type Tab = 'itens' | 'fornecedores';
+type Tab = 'itens' | 'fornecedores' | 'veiculos';
 
 interface InventoryPagination {
   currentPage: number;
@@ -17,6 +17,7 @@ interface InventoryPagination {
 interface MasterDataProps {
   inventory: InventoryItem[];
   vendors: Vendor[];
+  vehicles: Vehicle[];
   onAddRecord: (type: 'item' | 'vendor' | 'vehicle' | 'cost_center', data: any, isEdit: boolean) => void;
   onRemoveRecord?: (type: 'item' | 'vendor' | 'vehicle', id: string) => void;
   onImportRecords: (type: 'item' | 'vendor' | 'vehicle', data: any[]) => void;
@@ -58,6 +59,7 @@ const findSheetKeyValue = (row: Record<string, any>, ...keys: string[]) => {
 export const MasterData: React.FC<MasterDataProps> = ({
   inventory,
   vendors,
+  vehicles,
   onAddRecord,
   onRemoveRecord,
   onImportRecords,
@@ -70,6 +72,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
   const [formData, setFormData] = useState<any>({});
   const [localItemsPage, setLocalItemsPage] = useState(1);
   const [localVendorsPage, setLocalVendorsPage] = useState(1);
+  const [localVehiclesPage, setLocalVehiclesPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -81,6 +84,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
     }
     setLocalItemsPage(1);
     setLocalVendorsPage(1);
+    setLocalVehiclesPage(1);
     setSearchTerm('');
   }, [activeTab, inventoryPagination, vendorsPagination]);
 
@@ -105,6 +109,16 @@ export const MasterData: React.FC<MasterDataProps> = ({
     });
   }, [vendors, isSearching, normalizedSearch, normalizedSearchDigits]);
 
+  const filteredVehicles = useMemo(() => {
+    if (!isSearching) return vehicles;
+    return vehicles.filter((vehicle) => {
+      const plate = String(vehicle.plate || '').toLowerCase();
+      const model = String(vehicle.model || '').toLowerCase();
+      const center = String(vehicle.costCenter || '').toLowerCase();
+      return plate.includes(normalizedSearch) || model.includes(normalizedSearch) || center.includes(normalizedSearch);
+    });
+  }, [vehicles, isSearching, normalizedSearch]);
+
   const isItemsRemotePagination = Boolean(inventoryPagination);
   const currentPage = inventoryPagination?.currentPage ?? localItemsPage;
   const pageSize = inventoryPagination?.pageSize ?? ITEMS_PER_PAGE;
@@ -122,6 +136,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
     : vendorsPagination?.hasNextPage ?? vendorsCurrentPage * vendorsPageSize < filteredVendors.length;
   const isVendorsLoading = vendorsPagination?.isLoading ?? false;
   const vendorsCount = isSearching ? filteredVendors.length : vendorsPagination?.totalItems ?? vendors.length;
+  const vehiclesCount = filteredVehicles.length;
 
   const displayedInventory = useMemo(() => {
     if (isItemsRemotePagination) return filteredInventory;
@@ -135,6 +150,11 @@ export const MasterData: React.FC<MasterDataProps> = ({
     return filteredVendors.slice(start, start + ITEMS_PER_PAGE);
   }, [isVendorsRemotePagination, filteredVendors, localVendorsPage]);
 
+  const displayedVehicles = useMemo(() => {
+    const start = (localVehiclesPage - 1) * ITEMS_PER_PAGE;
+    return filteredVehicles.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredVehicles, localVehiclesPage]);
+
   useEffect(() => {
     if (!isSearching) return;
 
@@ -146,6 +166,10 @@ export const MasterData: React.FC<MasterDataProps> = ({
     if (activeTab === 'fornecedores') {
       if (vendorsPagination) vendorsPagination.onPageChange(1);
       else setLocalVendorsPage(1);
+    }
+
+    if (activeTab === 'veiculos') {
+      setLocalVehiclesPage(1);
     }
   }, [activeTab, isSearching, searchTerm, inventoryPagination, vendorsPagination]);
 
@@ -167,6 +191,10 @@ export const MasterData: React.FC<MasterDataProps> = ({
     setLocalVendorsPage(safePage);
   };
 
+  const handleVehiclesPageChange = (page: number) => {
+    setLocalVehiclesPage(Math.max(1, page));
+  };
+
   const handleOpenModal = (existingData?: any) => {
     if (existingData) {
       if (activeTab === 'fornecedores') {
@@ -178,6 +206,15 @@ export const MasterData: React.FC<MasterDataProps> = ({
           cnpj: formatCnpj(existingData.cnpj || ''),
           telefone: formatPhone(existingData.telefone || existingData.contact || ''),
           status: existingData.status || 'Ativo',
+        });
+      } else if (activeTab === 'veiculos') {
+        setFormData({
+          plate: existingData.plate || '',
+          model: existingData.model || '',
+          type: existingData.type || 'PROPRIO',
+          status: existingData.status || 'Disponível',
+          costCenter: existingData.costCenter || '',
+          lastMaintenance: existingData.lastMaintenance || '',
         });
       } else {
         setFormData(existingData);
@@ -193,7 +230,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
         imageUrl: 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=400&q=80',
       });
       setIsEditing(false);
-    } else {
+    } else if (activeTab === 'fornecedores') {
       setFormData({
         idFornecedor: '',
         razaoSocial: '',
@@ -203,6 +240,16 @@ export const MasterData: React.FC<MasterDataProps> = ({
         status: 'Ativo',
       });
       setIsEditing(false);
+    } else {
+      setFormData({
+        plate: '',
+        model: '',
+        type: 'PROPRIO',
+        status: 'Disponível',
+        costCenter: '',
+        lastMaintenance: '',
+      });
+      setIsEditing(false);
     }
 
     setIsModalOpen(true);
@@ -210,7 +257,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const type = activeTab === 'itens' ? 'item' : 'vendor';
+    const type = activeTab === 'itens' ? 'item' : activeTab === 'fornecedores' ? 'vendor' : 'vehicle';
 
     if (type === 'vendor') {
       const payload = {
@@ -224,11 +271,21 @@ export const MasterData: React.FC<MasterDataProps> = ({
         ...(isEditing ? { id: formData.id } : {}),
       };
       onAddRecord(type, payload, isEditing);
-    } else {
+    } else if (type === 'item') {
       const payload = {
         ...formData,
         sku: String(formData.sku || '').trim().toUpperCase(),
         name: String(formData.name || '').trim(),
+      };
+      onAddRecord(type, payload, isEditing);
+    } else {
+      const payload = {
+        plate: String(formData.plate || '').trim().toUpperCase(),
+        model: String(formData.model || '').trim(),
+        type: String(formData.type || 'PROPRIO').trim(),
+        status: String(formData.status || 'Disponível').trim(),
+        costCenter: String(formData.costCenter || '').trim(),
+        lastMaintenance: String(formData.lastMaintenance || '').trim(),
       };
       onAddRecord(type, payload, isEditing);
     }
@@ -238,7 +295,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
 
   const handleDelete = (id: string) => {
     if (!onRemoveRecord) return;
-    const type = activeTab === 'itens' ? 'item' : 'vendor';
+    const type = activeTab === 'itens' ? 'item' : activeTab === 'fornecedores' ? 'vendor' : 'vehicle';
     if (confirm('Tem certeza que deseja excluir este registro?')) {
       onRemoveRecord(type, id);
     }
@@ -248,10 +305,16 @@ export const MasterData: React.FC<MasterDataProps> = ({
     const headers =
       activeTab === 'itens'
         ? ['CODIGO ITEM', 'DESCRICAO']
-        : ['RAZAO SOCIAL', 'NOME FANTASIA', 'CNPJ', 'TELEFONE'];
+        : activeTab === 'fornecedores'
+          ? ['RAZAO SOCIAL', 'NOME FANTASIA', 'CNPJ', 'TELEFONE']
+          : ['PLACA', 'MODELO', 'TIPO', 'STATUS', 'CENTRO DE CUSTO'];
 
     const fileName =
-      activeTab === 'itens' ? 'template_itens_logiwms.xlsx' : 'template_fornecedores_logiwms.xlsx';
+      activeTab === 'itens'
+        ? 'template_itens_logiwms.xlsx'
+        : activeTab === 'fornecedores'
+          ? 'template_fornecedores_logiwms.xlsx'
+          : 'template_veiculos_logiwms.xlsx';
 
     const ws = XLSX.utils.aoa_to_sheet([headers]);
     const wb = XLSX.utils.book_new();
@@ -271,7 +334,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws);
 
-      const type = activeTab === 'itens' ? 'item' : 'vendor';
+      const type = activeTab === 'itens' ? 'item' : activeTab === 'fornecedores' ? 'vendor' : 'vehicle';
       let mappedData: any[] = [];
 
       if (activeTab === 'itens') {
@@ -293,7 +356,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
             location: 'DOCA-01',
           }))
           .filter((item) => item.sku && item.name);
-      } else {
+      } else if (activeTab === 'fornecedores') {
         mappedData = data
           .map((row: any) => ({
             id: `VEN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -304,6 +367,17 @@ export const MasterData: React.FC<MasterDataProps> = ({
             status: String(findSheetKeyValue(row, 'STATUS', 'SITUACAO') || 'Ativo'),
           }))
           .filter((vendor) => vendor.razaoSocial);
+      } else {
+        mappedData = data
+          .map((row: any) => ({
+            plate: String(findSheetKeyValue(row, 'PLACA', 'COD_PLACA') || '').trim().toUpperCase(),
+            model: String(findSheetKeyValue(row, 'MODELO', 'DESC_MODELO', 'NOME') || '').trim(),
+            type: String(findSheetKeyValue(row, 'TIPO', 'CLASSE') || 'PROPRIO').trim(),
+            status: String(findSheetKeyValue(row, 'STATUS', 'SITUACAO') || 'Disponível').trim(),
+            costCenter: String(findSheetKeyValue(row, 'CENTRO DE CUSTO', 'CENTRO_CUSTO', 'COD_CENTRO_CUSTO') || '').trim(),
+            lastMaintenance: String(findSheetKeyValue(row, 'ULTIMA MANUTENCAO', 'DATA ULT MANUT') || '').trim(),
+          }))
+          .filter((vehicle) => vehicle.plate && vehicle.model);
       }
 
       onImportRecords(type, mappedData);
@@ -358,7 +432,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
             onClick={() => handleOpenModal()}
             className="px-8 py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/25 hover:bg-blue-600 transition-all active:scale-95 flex items-center gap-2"
           >
-            Novo {activeTab === 'itens' ? 'Item' : 'Fornecedor'}
+            Novo {activeTab === 'itens' ? 'Item' : activeTab === 'fornecedores' ? 'Fornecedor' : 'Veículo'}
           </button>
         </div>
       </div>
@@ -389,6 +463,19 @@ export const MasterData: React.FC<MasterDataProps> = ({
             {vendorsCount}
           </span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('veiculos')}
+          className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'veiculos'
+            ? 'bg-white dark:bg-slate-900 text-primary shadow-sm'
+            : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+        >
+          veículos
+          <span className={`px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === 'veiculos' ? 'bg-primary/10 text-primary' : 'bg-slate-300/30 text-slate-400'}`}>
+            {vehiclesCount}
+          </span>
+        </button>
       </div>
 
       <div className="relative max-w-xl">
@@ -399,7 +486,9 @@ export const MasterData: React.FC<MasterDataProps> = ({
           placeholder={
             activeTab === 'itens'
               ? 'Buscar por SKU ou Nome do item...'
-              : 'Buscar por Razão Social ou CNPJ...'
+              : activeTab === 'fornecedores'
+                ? 'Buscar por Razão Social ou CNPJ...'
+                : 'Buscar por Placa, Modelo ou Centro de Custo...'
           }
           className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-700 dark:text-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
         />
@@ -429,11 +518,20 @@ export const MasterData: React.FC<MasterDataProps> = ({
                     <th className="px-8 py-6">Categoria</th>
                     <th className="px-8 py-6 text-right">Gestao</th>
                   </>
-                ) : (
+                ) : activeTab === 'fornecedores' ? (
                   <>
                     <th className="px-8 py-6">Fornecedor</th>
                     <th className="px-8 py-6">CNPJ</th>
                     <th className="px-8 py-6">Telefone</th>
+                    <th className="px-8 py-6 text-center">Status</th>
+                    <th className="px-8 py-6 text-right">Gestao</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-8 py-6">Placa</th>
+                    <th className="px-8 py-6">Modelo</th>
+                    <th className="px-8 py-6">Tipo</th>
+                    <th className="px-8 py-6">Centro de Custo</th>
                     <th className="px-8 py-6 text-center">Status</th>
                     <th className="px-8 py-6 text-right">Gestao</th>
                   </>
@@ -496,6 +594,26 @@ export const MasterData: React.FC<MasterDataProps> = ({
                     </tr>
                   );
                 })}
+
+              {activeTab === 'veiculos' &&
+                displayedVehicles.map((vehicle) => (
+                  <tr key={vehicle.plate} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all group">
+                    <td className="px-8 py-5 font-mono text-[11px] font-black text-primary">{vehicle.plate || '-'}</td>
+                    <td className="px-8 py-5 text-[11px] font-bold text-slate-700 dark:text-slate-200">{vehicle.model || '-'}</td>
+                    <td className="px-8 py-5 text-[11px] font-bold text-slate-600 dark:text-slate-300">{vehicle.type || '-'}</td>
+                    <td className="px-8 py-5 text-[11px] font-bold text-slate-600 dark:text-slate-300">{vehicle.costCenter || '-'}</td>
+                    <td className="px-8 py-5 text-center">
+                      <span className="px-2 py-1 rounded-lg text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        {vehicle.status || '-'}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <div className="flex justify-end">
+                        <ActionButtons onEdit={() => handleOpenModal(vehicle)} onDelete={() => handleDelete(vehicle.plate)} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
@@ -525,13 +643,25 @@ export const MasterData: React.FC<MasterDataProps> = ({
         />
       )}
 
+      {activeTab === 'veiculos' && (
+        <PaginationBar
+          currentPage={localVehiclesPage}
+          currentCount={displayedVehicles.length}
+          pageSize={ITEMS_PER_PAGE}
+          hasNextPage={localVehiclesPage * ITEMS_PER_PAGE < filteredVehicles.length}
+          isLoading={false}
+          itemLabel="veículos"
+          onPageChange={handleVehiclesPageChange}
+        />
+      )}
+
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 border border-slate-100 dark:border-slate-800">
             <div className="p-10 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
               <div>
                 <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">
-                  {isEditing ? 'Editar' : 'Novo'} {activeTab === 'itens' ? 'Item Mestre' : 'Fornecedor'}
+                  {isEditing ? 'Editar' : 'Novo'} {activeTab === 'itens' ? 'Item Mestre' : activeTab === 'fornecedores' ? 'Fornecedor' : 'Veículo'}
                 </h3>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">LogiWMS Pro</p>
               </div>
@@ -571,7 +701,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
                       />
                     </div>
                   </>
-                ) : (
+                ) : activeTab === 'fornecedores' ? (
                   <>
                     {isEditing && (
                       <div className="space-y-2">
@@ -618,6 +748,52 @@ export const MasterData: React.FC<MasterDataProps> = ({
                         maxLength={15}
                         value={formData.telefone || ''}
                         onChange={(e) => setFormData({ ...formData, telefone: formatPhone(e.target.value) })}
+                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Placa</label>
+                      <input
+                        required
+                        disabled={isEditing}
+                        value={formData.plate || ''}
+                        onChange={(e) => setFormData({ ...formData, plate: e.target.value.toUpperCase() })}
+                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Modelo</label>
+                      <input
+                        required
+                        value={formData.model || ''}
+                        onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tipo</label>
+                      <input
+                        value={formData.type || ''}
+                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Centro de Custo</label>
+                      <input
+                        value={formData.costCenter || ''}
+                        onChange={(e) => setFormData({ ...formData, costCenter: e.target.value })}
+                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
+                      <input
+                        value={formData.status || ''}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                         className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
                       />
                     </div>
