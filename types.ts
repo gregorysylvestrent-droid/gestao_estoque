@@ -145,7 +145,7 @@ export interface PurchaseOrder {
   items: { sku: string; name: string; qty: number; price: number }[];
   status: PurchaseOrderStatus;
   total: number;
-  priority: 'normal' | 'urgente';
+  priority: 'normal' | 'urgente' | 'critico';
   requester?: string;
   quotes?: Quote[];
   selectedQuoteId?: string;
@@ -278,7 +278,7 @@ export interface WorkOrder {
   };
   createdBy: string;
   warehouseId: string;
-  
+
   // New fields for improvements
   totalSeconds?: number; // Tempo total acumulado em segundos
   lastStatusChange?: string; // Timestamp da última mudança de status
@@ -295,7 +295,7 @@ export interface ServiceItem {
   estimatedHours: number;
   actualHours?: number;
   completed: boolean;
-  
+
   // New fields
   mechanicId?: string; // Mecânico responsável por este serviço
   mechanicName?: string;

@@ -398,7 +398,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   const [rejectionReason, setRejectionReason] = useState('');
   // Form State
   const [selectedVendor, setSelectedVendor] = useState('');
-  const [priority, setPriority] = useState<'normal' | 'urgente'>('normal');
+  const [priority, setPriority] = useState<'normal' | 'urgente' | 'critico'>('normal');
   const [itemsList, setItemsList] = useState<{ sku: string; name: string; qty: number; price: number }[]>([]);
 
   // Legacy quotation state (mantido temporariamente para compatibilidade visual)
@@ -532,6 +532,19 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       return valueA[poSortKey].localeCompare(valueB[poSortKey], 'pt-BR', { numeric: true }) * factor;
     });
   }, [orders, poSearch, poPlateFilter, poCostCenterFilter, poSortKey, poSortDirection]);
+
+  const paginatedFilteredOrders = useMemo(() => {
+    const startIndex = Math.max(0, (currentPage - 1) * pageSize);
+    return filteredSortedOrders.slice(startIndex, startIndex + pageSize);
+  }, [filteredSortedOrders, currentPage, pageSize]);
+
+  const hasNextFilteredPage = currentPage * pageSize < filteredSortedOrders.length;
+
+  useEffect(() => {
+    if (currentPage > 1 && filteredSortedOrders.length <= (currentPage - 1) * pageSize) {
+      onPageChange(1);
+    }
+  }, [filteredSortedOrders.length, currentPage, pageSize, onPageChange]);
 
   const costCenterOptions = useMemo(() => {
     const values = new Set<string>();
@@ -1721,7 +1734,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
         currentPage={currentPage}
         currentCount={filteredSortedOrders.length}
         pageSize={pageSize}
-        hasNextPage={hasNextPage}
+        hasNextPage={hasNextFilteredPage}
         isLoading={isPageLoading}
         itemLabel="pedidos"
         onPageChange={onPageChange}
@@ -1789,7 +1802,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredSortedOrders.length > 0 ? filteredSortedOrders.map((order) => (
+              {paginatedFilteredOrders.length > 0 ? paginatedFilteredOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
                   <td className="px-8 py-5">
                     <span className="font-black text-sm text-slate-800 dark:text-white">{order.id}</span>
@@ -1816,9 +1829,13 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                     </span>
                   </td>
                   <td className="px-8 py-5 text-center">
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded ${order.priority === 'urgente' ? 'bg-red-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded ${order.priority === 'critico'
+                      ? 'bg-rose-700 text-white'
+                      : order.priority === 'urgente'
+                        ? 'bg-yellow-400 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                       }`}>
-                      {order.priority.toUpperCase()}
+                      {order.priority === 'critico' ? 'CRÍTICO' : order.priority.toUpperCase()}
                     </span>
                   </td>
                   <td className="px-8 py-5 text-right">
@@ -2003,14 +2020,14 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Prioridade</label>
                   <div className="flex gap-2">
-                    {(['normal', 'urgente'] as const).map(p => (
+                    {(['normal', 'urgente', 'critico'] as const).map(p => (
                       <button
                         key={p}
                         onClick={() => setPriority(p)}
                         className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${priority === p ? 'bg-primary border-primary text-white' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-400'
                           }`}
                       >
-                        {p}
+                        {p === 'critico' ? 'crítico' : p}
                       </button>
                     ))}
                   </div>
@@ -2298,7 +2315,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                 <p className="text-xs font-bold text-blue-600 dark:text-blue-400 leading-relaxed">
                   {viewingOrder.requester && viewingOrder.requester.includes('AI')
                     ? 'Esta requisição foi gerada algoritmicamente pela LogiAI para evitar ruptura de estoque detectada.'
-                    : `Esta requisição foi gerada manualmente por Ricardo Souza via painel de suprimentos.`}
+                    : `Esta requisição foi gerada manualmente por Admin via banco de dados.`}
                 </p>
               </div>
             </div>

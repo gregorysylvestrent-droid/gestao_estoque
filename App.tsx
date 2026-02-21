@@ -938,6 +938,8 @@ export const App: React.FC = () => {
     approvedAt: toPtBrDateTime(po.approved_at),
     rejectedAt: toPtBrDateTime(po.rejected_at),
     vendorOrderNumber: po.vendor_order_number,
+    plate: String(po.plate ?? po.placa ?? '').trim(),
+    costCenter: String(po.cost_center ?? po.costCenter ?? po.centro_custo ?? '').trim(),
     approvalHistory: Array.isArray(po.approval_history)
       ? po.approval_history.map((entry: any) => ({
         id: entry.id,
@@ -1674,8 +1676,8 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
-    // Relatorios usa dataset completo para consolidacao e indicadores.
-    if (activeModule === 'relatorios' && !isPurchaseOrdersFullyLoaded) {
+    // Relatorios e Compras usam dataset completo para consolidacao e busca global.
+    if ((activeModule === 'relatorios' || activeModule === 'compras') && !isPurchaseOrdersFullyLoaded) {
       void loadPurchaseOrdersFull();
     }
   }, [activeModule, user, isPurchaseOrdersFullyLoaded]);
@@ -1696,7 +1698,8 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (activeModule !== 'compras') return;
     if (!user) return;
-    void fetchPurchaseOrdersPage(purchaseOrdersPage);
+    // Compras usa lista completa em memoria para permitir busca global sem trocar de pagina.
+    // Mantemos currentPage apenas para paginacao client-side na tela.
   }, [activeModule, user, activeWarehouse, purchaseOrdersPage]);
 
   useEffect(() => {
@@ -4960,7 +4963,7 @@ export const App: React.FC = () => {
                   <PurchaseOrders
                     user={user}
                     activeWarehouse={activeWarehouse}
-                    orders={pagedPurchaseOrders}
+                    orders={purchaseOrders.filter(po => po.warehouseId === activeWarehouse)}
                     vendors={vendors}
                     inventory={inventory.filter(i => i.warehouseId === activeWarehouse)}
                     vehicles={vehicles}
@@ -4973,8 +4976,8 @@ export const App: React.FC = () => {
                     onDeleteOrder={handleDeletePO}
                     currentPage={purchaseOrdersPage}
                     pageSize={PURCHASE_ORDERS_PAGE_SIZE}
-                    hasNextPage={hasMorePurchaseOrders}
-                    isPageLoading={isPurchaseOrdersPageLoading}
+                    hasNextPage={false}
+                    isPageLoading={false}
                     onPageChange={setPurchaseOrdersPage}
                   />
                 )}
