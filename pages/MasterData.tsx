@@ -663,7 +663,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
                 <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">
                   {isEditing ? 'Editar' : 'Novo'} {activeTab === 'itens' ? 'Item Mestre' : activeTab === 'fornecedores' ? 'Fornecedor' : 'Veículo'}
                 </h3>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">LogiWMS Pro</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">Gestão de Compras e Estoque</p>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}

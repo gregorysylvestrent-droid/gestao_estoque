@@ -55,8 +55,8 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ user, onSelectMo
           <div className="flex items-center gap-3">
             <img src="https://teslaeventos.com.br/assets/logos/NORTETECH-CIRCLE.png" alt="Norte Tech" className="w-10 h-10 object-contain" />
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">LogiWMS Pro</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Sistema Integrado de Gestao</p>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Gestão de Compras e Estoque</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Sistema Integrado de Gestão</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -128,7 +128,7 @@ export const ModuleSelector: React.FC<ModuleSelectorProps> = ({ user, onSelectMo
           </div>
 
           <div className="mt-12 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Copyright 2024 LogiWMS Pro - Todos os direitos reservados</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Copyright 2026 Gestão de Compras e Estoque - Todos os direitos reservados</p>
           </div>
         </div>
       </main>

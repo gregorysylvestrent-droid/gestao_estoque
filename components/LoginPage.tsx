@@ -115,7 +115,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         <div className="absolute inset-0 bg-gradient-to-r from-slate-900/40 to-transparent" />
         <div className="relative z-10 flex flex-col justify-end p-12 text-white">
           <h2 className="text-4xl font-black mb-2 drop-shadow-lg">Bem-vindo ao Futuro da Logística</h2>
-          <p className="text-lg font-bold text-slate-200 drop-shadow-md">Norte Tech WMS - Gestão Inteligente e Conectada.</p>
+          <p className="text-lg font-bold text-slate-200 drop-shadow-md">Sistema de Compras & Estoque - Gestão Inteligente e Conectada.</p>
         </div>
       </div>
 

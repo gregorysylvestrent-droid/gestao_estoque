@@ -169,8 +169,8 @@ export const TopBar: React.FC<TopBarProps> = ({
             className="flex items-center gap-3 p-1 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 group"
           >
             <div className="text-right hidden sm:block">
-              <p className="text-xs font-black text-slate-800 dark:text-white group-hover:text-primary transition-colors">{user?.name || 'Ricardo Souza'}</p>
-              <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-tight">{user?.role === 'admin' ? 'Gestor de Operações' : 'Operador CD'}</p>
+              <p className="text-xs font-black text-slate-800 dark:text-white group-hover:text-primary transition-colors">{user?.name || 'Admin'}</p>
+              <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-tight">{user?.role === 'admin' ? 'Gestor' : 'Assistente'}</p>
             </div>
             <div className="relative">
               <img
@@ -191,7 +191,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               <div className="absolute top-full right-0 mt-3 w-56 bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
                 <div className="p-4 bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Logado como</p>
-                  <p className="text-sm font-black text-slate-800 dark:text-white truncate">{user?.email || 'ricardo.souza@nortetech.com'}</p>
+                  <p className="text-sm font-black text-slate-800 dark:text-white truncate">{user?.email || 'admin@nortetech.net'}</p>
                 </div>
                 <div className="p-2">
                   <button
