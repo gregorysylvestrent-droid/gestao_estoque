@@ -14,6 +14,8 @@ interface TopBarProps {
   onMobileMenuToggle: () => void;
   onBackToModules?: () => void;
   showBackButton?: boolean;
+  onOpenProfile?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -27,12 +29,24 @@ export const TopBar: React.FC<TopBarProps> = ({
   onMarkAllAsRead,
   onMobileMenuToggle,
   onBackToModules,
-  showBackButton
+  showBackButton,
+  onOpenProfile,
+  onOpenSettings
 }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const handleOpenProfile = () => {
+    setIsUserMenuOpen(false);
+    onOpenProfile?.();
+  };
+
+  const handleOpenSettings = () => {
+    setIsUserMenuOpen(false);
+    onOpenSettings?.();
+  };
 
   return (
     <header className="h-14 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111922] px-4 lg:px-6 flex items-center justify-between sticky top-0 z-40">
@@ -180,13 +194,19 @@ export const TopBar: React.FC<TopBarProps> = ({
                   <p className="text-sm font-black text-slate-800 dark:text-white truncate">{user?.email || 'ricardo.souza@nortetech.com'}</p>
                 </div>
                 <div className="p-2">
-                  <button className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all group">
+                  <button
+                    onClick={handleOpenProfile}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all group"
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-primary transition-colors">
                       <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                     </svg>
                     Meu Perfil
                   </button>
-                  <button className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all group">
+                  <button
+                    onClick={handleOpenSettings}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all group"
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:text-primary transition-colors">
                       <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />
                     </svg>

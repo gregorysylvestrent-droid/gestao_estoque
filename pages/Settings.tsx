@@ -4,6 +4,7 @@ import { User, ALL_MODULES, Module, ROLE_LABELS, Warehouse } from '../types';
 interface SettingsProps {
   users: User[];
   warehouses: Warehouse[];
+  currentUser: User | null;
   onAddUser: (user: User) => void;
   onUpdateUser: (user: User) => void;
   onDeleteUser: (userId: string) => void;
@@ -26,6 +27,7 @@ const createEmptyUserDraft = (): Partial<User> => ({
 export const Settings: React.FC<SettingsProps> = ({
   users,
   warehouses,
+  currentUser,
   onAddUser,
   onUpdateUser,
   onDeleteUser
@@ -33,6 +35,11 @@ export const Settings: React.FC<SettingsProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState<Partial<User>>(createEmptyUserDraft());
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const isAdminUser = currentUser?.role === 'admin';
 
   const activeUsers = useMemo(() => users.filter((user) => user.status === 'Ativo').length, [users]);
   const workshopUsers = useMemo(() => users.filter((user) => user.hasWorkshopAccess).length, [users]);
@@ -119,6 +126,122 @@ export const Settings: React.FC<SettingsProps> = ({
     setNewUser({ ...newUser, modules: ALL_MODULES.map((module) => module.id) });
   };
 
+
+  const handleChangeOwnPassword = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!currentUser) return;
+
+    const storedCurrentPassword = String(currentUser.password || '');
+    if (!newPassword.trim()) {
+      window.alert('Informe a nova senha.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      window.alert('A confirmação da senha não confere.');
+      return;
+    }
+    if (storedCurrentPassword && currentPassword !== storedCurrentPassword) {
+      window.alert('Senha atual inválida.');
+      return;
+    }
+
+    onUpdateUser({
+      ...currentUser,
+      password: newPassword,
+    });
+
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  if (!isAdminUser && currentUser) {
+    const currentUserModules = currentUser.modules || [];
+    const warehouseNames = (currentUser.allowedWarehouses || [])
+      .map((warehouseId) => warehouses.find((warehouse) => warehouse.id === warehouseId)?.name || warehouseId);
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-widest text-[#617589]">
+          <span>Configurações</span>
+          <span>/</span>
+          <span className="text-primary">Meu Acesso</span>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-4">
+          <h2 className="text-2xl font-black tracking-tight text-slate-800">Dados do Usuário Logado</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nome</p>
+              <p className="text-sm font-bold text-slate-700">{currentUser.name}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">E-mail</p>
+              <p className="text-sm font-bold text-slate-700">{currentUser.email}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Perfil</p>
+              <p className="text-sm font-bold text-slate-700">{ROLE_LABELS[currentUser.role]}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
+              <p className="text-sm font-bold text-slate-700">{currentUser.status}</p>
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Módulos permitidos</p>
+            <div className="flex flex-wrap gap-2">
+              {currentUserModules.length > 0 ? currentUserModules.map((moduleId) => {
+                const moduleLabel = ALL_MODULES.find((module) => module.id === moduleId)?.label || moduleId;
+                return (
+                  <span key={moduleId} className="px-2 py-1 text-[10px] font-black uppercase rounded-lg bg-slate-100 text-slate-600">
+                    {moduleLabel}
+                  </span>
+                );
+              }) : (
+                <span className="text-xs text-slate-500">Sem módulos adicionais</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Armazéns permitidos</p>
+            <div className="flex flex-wrap gap-2">
+              {warehouseNames.length > 0 ? warehouseNames.map((warehouseName) => (
+                <span key={warehouseName} className="px-2 py-1 text-[10px] font-black uppercase rounded-lg bg-blue-50 text-blue-700">
+                  {warehouseName}
+                </span>
+              )) : (
+                <span className="text-xs text-slate-500">Sem armazéns atribuídos</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleChangeOwnPassword} className="rounded-2xl border border-slate-200/70 bg-white p-6 shadow-sm space-y-4">
+          <h3 className="text-lg font-black text-slate-800">Alterar Senha</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Senha Atual</label>
+              <input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="w-full px-4 py-2.5 border rounded-xl bg-slate-50" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Nova Senha</label>
+              <input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required className="w-full px-4 py-2.5 border rounded-xl bg-slate-50" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Confirmar Nova Senha</label>
+              <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required className="w-full px-4 py-2.5 border rounded-xl bg-slate-50" />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button type="submit" className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-black shadow-lg shadow-primary/20 hover:bg-blue-600 transition-all">
+              Atualizar Senha
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-widest text-[#617589]">

@@ -138,6 +138,7 @@ export const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // System Module Selection (Warehouse vs Workshop)
   const [currentSystemModule, setCurrentSystemModule] = useState<SystemModule | null>(null);
@@ -1886,6 +1887,14 @@ export const App: React.FC = () => {
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
     document.documentElement.classList.toggle('dark');
+  };
+
+  const handleOpenTopBarSettings = () => {
+    setActiveModule('configuracoes');
+  };
+
+  const handleOpenTopBarProfile = () => {
+    setIsProfileModalOpen(true);
   };
 
   const showNotification = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
@@ -4868,6 +4877,8 @@ export const App: React.FC = () => {
               onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               showBackButton={user.role === 'admin'}
               onBackToModules={() => setCurrentSystemModule(null)}
+              onOpenProfile={handleOpenTopBarProfile}
+              onOpenSettings={handleOpenTopBarSettings}
             />
             <main className="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark p-4 lg:p-6 relative">
               {notification && (
@@ -5035,6 +5046,7 @@ export const App: React.FC = () => {
                   <Settings
                     users={users}
                     warehouses={warehouses}
+                    currentUser={user}
                     onAddUser={handleAddUser}
                     onUpdateUser={handleUpdateUser}
                     onDeleteUser={handleDeleteUser}
@@ -5044,6 +5056,44 @@ export const App: React.FC = () => {
             </main>
           </div>
         </>
+      )}
+
+
+
+      {isProfileModalOpen && user && (
+        <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Meu Perfil</p>
+                <h3 className="text-xl font-black text-slate-800 dark:text-white">Dados do usuário logado</h3>
+              </div>
+              <button onClick={() => setIsProfileModalOpen(false)} className="size-10 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-500">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-4">
+                <img src={user.avatar} alt={user.name} className="size-16 rounded-2xl object-cover border border-slate-200 dark:border-slate-700" />
+                <div>
+                  <p className="text-lg font-black text-slate-800 dark:text-white">{user.name}</p>
+                  <p className="text-sm text-slate-500">{user.email}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Função</p>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{user.role}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{user.status}</p>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={() => setIsProfileModalOpen(false)} className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-black">Fechar</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {currentSystemModule === 'workshop' && (
