@@ -12,6 +12,8 @@ interface InventoryPagination {
   hasNextPage: boolean;
   isLoading: boolean;
   onPageChange: (page: number) => void;
+  pageSizeOptions?: number[];
+  onPageSizeChange?: (pageSize: number) => void;
 }
 
 interface MasterDataProps {
@@ -25,7 +27,7 @@ interface MasterDataProps {
   vendorsPagination?: InventoryPagination;
 }
 
-const ITEMS_PER_PAGE = 50;
+const ITEMS_PER_PAGE = 25;
 
 const normalizeDigits = (value: unknown) => String(value ?? '').replace(/\D+/g, '');
 const formatCnpj = (value: unknown) => {
@@ -73,6 +75,9 @@ export const MasterData: React.FC<MasterDataProps> = ({
   const [localItemsPage, setLocalItemsPage] = useState(1);
   const [localVendorsPage, setLocalVendorsPage] = useState(1);
   const [localVehiclesPage, setLocalVehiclesPage] = useState(1);
+  const [localItemsPageSize, setLocalItemsPageSize] = useState(ITEMS_PER_PAGE);
+  const [localVendorsPageSize, setLocalVendorsPageSize] = useState(ITEMS_PER_PAGE);
+  const [localVehiclesPageSize, setLocalVehiclesPageSize] = useState(ITEMS_PER_PAGE);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -86,7 +91,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
     setLocalVendorsPage(1);
     setLocalVehiclesPage(1);
     setSearchTerm('');
-  }, [activeTab, inventoryPagination, vendorsPagination]);
+  }, [activeTab]);
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const normalizedSearchDigits = normalizeDigits(searchTerm);
@@ -121,7 +126,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
 
   const isItemsRemotePagination = Boolean(inventoryPagination);
   const currentPage = inventoryPagination?.currentPage ?? localItemsPage;
-  const pageSize = inventoryPagination?.pageSize ?? ITEMS_PER_PAGE;
+  const pageSize = inventoryPagination?.pageSize ?? localItemsPageSize;
   const hasNextPage = isSearching
     ? false
     : inventoryPagination?.hasNextPage ?? currentPage * pageSize < filteredInventory.length;
@@ -130,7 +135,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
 
   const isVendorsRemotePagination = Boolean(vendorsPagination);
   const vendorsCurrentPage = vendorsPagination?.currentPage ?? localVendorsPage;
-  const vendorsPageSize = vendorsPagination?.pageSize ?? ITEMS_PER_PAGE;
+  const vendorsPageSize = vendorsPagination?.pageSize ?? localVendorsPageSize;
   const vendorsHasNextPage = isSearching
     ? false
     : vendorsPagination?.hasNextPage ?? vendorsCurrentPage * vendorsPageSize < filteredVendors.length;
@@ -140,20 +145,20 @@ export const MasterData: React.FC<MasterDataProps> = ({
 
   const displayedInventory = useMemo(() => {
     if (isItemsRemotePagination) return filteredInventory;
-    const start = (localItemsPage - 1) * ITEMS_PER_PAGE;
-    return filteredInventory.slice(start, start + ITEMS_PER_PAGE);
-  }, [isItemsRemotePagination, filteredInventory, localItemsPage]);
+    const start = (localItemsPage - 1) * localItemsPageSize;
+    return filteredInventory.slice(start, start + localItemsPageSize);
+  }, [isItemsRemotePagination, filteredInventory, localItemsPage, localItemsPageSize]);
 
   const displayedVendors = useMemo(() => {
     if (isVendorsRemotePagination) return filteredVendors;
-    const start = (localVendorsPage - 1) * ITEMS_PER_PAGE;
-    return filteredVendors.slice(start, start + ITEMS_PER_PAGE);
-  }, [isVendorsRemotePagination, filteredVendors, localVendorsPage]);
+    const start = (localVendorsPage - 1) * localVendorsPageSize;
+    return filteredVendors.slice(start, start + localVendorsPageSize);
+  }, [isVendorsRemotePagination, filteredVendors, localVendorsPage, localVendorsPageSize]);
 
   const displayedVehicles = useMemo(() => {
-    const start = (localVehiclesPage - 1) * ITEMS_PER_PAGE;
-    return filteredVehicles.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredVehicles, localVehiclesPage]);
+    const start = (localVehiclesPage - 1) * localVehiclesPageSize;
+    return filteredVehicles.slice(start, start + localVehiclesPageSize);
+  }, [filteredVehicles, localVehiclesPage, localVehiclesPageSize]);
 
   useEffect(() => {
     if (!isSearching) return;
@@ -194,6 +199,41 @@ export const MasterData: React.FC<MasterDataProps> = ({
   const handleVehiclesPageChange = (page: number) => {
     setLocalVehiclesPage(Math.max(1, page));
   };
+
+  const handleInventoryPageSizeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextSize = Number(event.target.value);
+    if (!Number.isFinite(nextSize) || nextSize <= 0) return;
+
+    if (inventoryPagination?.onPageSizeChange) {
+      inventoryPagination.onPageSizeChange(nextSize);
+      return;
+    }
+
+    setLocalItemsPage(1);
+    setLocalItemsPageSize(nextSize);
+  };
+
+  const handleVendorsPageSizeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextSize = Number(event.target.value);
+    if (!Number.isFinite(nextSize) || nextSize <= 0) return;
+
+    if (vendorsPagination?.onPageSizeChange) {
+      vendorsPagination.onPageSizeChange(nextSize);
+      return;
+    }
+
+    setLocalVendorsPage(1);
+    setLocalVendorsPageSize(nextSize);
+  };
+
+  const handleVehiclesPageSizeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextSize = Number(event.target.value);
+    if (!Number.isFinite(nextSize) || nextSize <= 0) return;
+    setLocalVehiclesPage(1);
+    setLocalVehiclesPageSize(nextSize);
+  };
+
+  const localPageSizeOptions = [25, 50, 100];
 
   const handleOpenModal = (existingData?: any) => {
     if (existingData) {
@@ -620,6 +660,24 @@ export const MasterData: React.FC<MasterDataProps> = ({
       </div>
 
       {activeTab === 'itens' && (
+        <div className="flex justify-end mt-4">
+          <label className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+            Itens por pagina
+            <select
+              className="px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              value={pageSize}
+              onChange={handleInventoryPageSizeChange}
+              disabled={isPageLoading}
+            >
+              {(inventoryPagination?.pageSizeOptions ?? localPageSizeOptions).map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
+      {activeTab === 'itens' && (
         <PaginationBar
           currentPage={currentPage}
           currentCount={displayedInventory.length}
@@ -629,6 +687,24 @@ export const MasterData: React.FC<MasterDataProps> = ({
           itemLabel="itens"
           onPageChange={handleInventoryPageChange}
         />
+      )}
+
+      {activeTab === 'fornecedores' && (
+        <div className="flex justify-end mt-4">
+          <label className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+            Itens por pagina
+            <select
+              className="px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              value={vendorsPageSize}
+              onChange={handleVendorsPageSizeChange}
+              disabled={isVendorsLoading}
+            >
+              {(vendorsPagination?.pageSizeOptions ?? localPageSizeOptions).map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       )}
 
       {activeTab === 'fornecedores' && (
@@ -644,11 +720,28 @@ export const MasterData: React.FC<MasterDataProps> = ({
       )}
 
       {activeTab === 'veiculos' && (
+        <div className="flex justify-end mt-4">
+          <label className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+            Itens por pagina
+            <select
+              className="px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              value={localVehiclesPageSize}
+              onChange={handleVehiclesPageSizeChange}
+            >
+              {localPageSizeOptions.map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
+      {activeTab === 'veiculos' && (
         <PaginationBar
           currentPage={localVehiclesPage}
           currentCount={displayedVehicles.length}
-          pageSize={ITEMS_PER_PAGE}
-          hasNextPage={localVehiclesPage * ITEMS_PER_PAGE < filteredVehicles.length}
+          pageSize={localVehiclesPageSize}
+          hasNextPage={localVehiclesPage * localVehiclesPageSize < filteredVehicles.length}
           isLoading={false}
           itemLabel="veículos"
           onPageChange={handleVehiclesPageChange}

@@ -435,13 +435,14 @@ export const Settings: React.FC<SettingsProps> = ({
                         onChange={(event) => setNewUser({ ...newUser, role: event.target.value as User['role'] })}
                         className="w-full px-3 py-2.5 bg-slate-50 border border-gray-200 rounded-xl font-bold"
                       >
-                        <option value="Comprador(a)">Comprador</option>
-                        <option value="Admin">Administrador</option>
-                        <option value="Gerente">Gerente</option>
-                        <option value="Supervisor(a)">Supervisor Mecânico</option>
-                        <option value="Motorista">Motorista</option>
-                        <option value="Operador(a)">Operador</option>
-                        <option value="Conferente">Conferente</option>
+                        <option value="buyer">Comprador</option>
+                        <option value="admin">Administrador</option>
+                        <option value="manager">Gerente</option>
+                        <option value="driver">Motorista</option>
+                        <option value="operator">Operador</option>
+                        <option value="checker">Conferente</option>
+                        <option value="mechanic_supervisor">Supervisor de Oficina</option>
+                        <option value="fleet_supervisor">Supervisor de Frota</option>
                       </select>
                     </div>
                     <div>

@@ -4,7 +4,7 @@ import { PurchaseOrder, Vendor, InventoryItem, Quote, User, PO_STATUS_LABELS, Cy
 import { PaginationBar } from '../components/PaginationBar';
 import { formatDatePtBR, formatDateTimePtBR, parseDateLike, splitDateTimePtBR } from '../utils/dateTime';
 
-type PoSortKey = 'id' | 'product' | 'plateCenter' | 'status' | 'priority';
+type PoSortKey = 'id' | 'requestDate' | 'product' | 'plateCenter' | 'status' | 'priority';
 type PoSortDirection = 'asc' | 'desc';
 type ItemQuoteForm = {
   vendorId: string;
@@ -28,6 +28,7 @@ interface PurchaseOrdersProps {
   onCreateOrder: (order: PurchaseOrder) => void;
   onAddQuotes: (poId: string, quotes: Quote[]) => void;
   onSendToApproval: (poId: string, selectedQuoteId: string) => void;
+  onUpdateSelectedQuote: (poId: string, selectedQuoteId: string) => Promise<void>;
   onMarkAsSent: (poId: string, vendorOrderNumber: string) => void;
   onApprove: (id: string) => void;
   onReject: (id: string, reason?: string) => void;
@@ -318,6 +319,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   onCreateOrder,
   onAddQuotes,
   onSendToApproval,
+  onUpdateSelectedQuote,
   onMarkAsSent,
   onApprove,
   onReject,
@@ -334,9 +336,12 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   const [poSearch, setPoSearch] = useState('');
   const [poPlateFilter, setPoPlateFilter] = useState('');
   const [poCostCenterFilter, setPoCostCenterFilter] = useState('');
-  const [poSortKey, setPoSortKey] = useState<PoSortKey>('id');
+  const [poStatusFilter, setPoStatusFilter] = useState('');
+  const [poRequesterFilter, setPoRequesterFilter] = useState('');
+  const [poSortKey, setPoSortKey] = useState<PoSortKey>('requestDate');
   const [poSortDirection, setPoSortDirection] = useState<PoSortDirection>('desc');
   const [visibleQuoteForms, setVisibleQuoteForms] = useState(1);
+  const canApprovePurchaseOrders = ['admin', 'manager', 'mechanic_supervisor', 'fleet_supervisor'].includes(user.role);
 
   // Form State
   const [plate, setPlate] = useState('');
@@ -489,6 +494,8 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     const search = normalize(poSearch);
     const plateFilter = normalize(poPlateFilter);
     const costCenterFilter = normalize(poCostCenterFilter);
+    const statusFilter = normalize(poStatusFilter);
+    const requesterFilter = normalize(poRequesterFilter);
 
     const baseOrders = orders.filter((order) => {
       const itemsJoined = (order.items || [])
@@ -510,13 +517,21 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       const matchesSearch = !search || haystack.includes(search);
       const matchesPlate = !plateFilter || normalize(order.plate).includes(plateFilter);
       const matchesCostCenter = !costCenterFilter || normalize(order.costCenter).includes(costCenterFilter);
-      return matchesSearch && matchesPlate && matchesCostCenter;
+      const matchesStatus = !statusFilter || normalize(PO_STATUS_LABELS[order.status] || order.status).includes(statusFilter);
+      const matchesRequester = !requesterFilter || normalize(order.requester).includes(requesterFilter);
+      return matchesSearch && matchesPlate && matchesCostCenter && matchesStatus && matchesRequester;
     });
 
     return baseOrders.sort((a, b) => {
       const factor = poSortDirection === 'asc' ? 1 : -1;
+      if (poSortKey === 'requestDate') {
+        const dateA = parseDateLike(a.requestDate)?.getTime() ?? 0;
+        const dateB = parseDateLike(b.requestDate)?.getTime() ?? 0;
+        return (dateA - dateB) * factor;
+      }
       const valueA: Record<PoSortKey, string> = {
         id: String(a.id || ''),
+        requestDate: String(a.requestDate || ''),
         product: `${a.items?.[0]?.name || ''} ${a.items?.[0]?.sku || ''}`,
         plateCenter: `${a.plate || ''} ${a.costCenter || ''}`,
         status: String(PO_STATUS_LABELS[a.status] || a.status),
@@ -524,6 +539,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       };
       const valueB: Record<PoSortKey, string> = {
         id: String(b.id || ''),
+        requestDate: String(b.requestDate || ''),
         product: `${b.items?.[0]?.name || ''} ${b.items?.[0]?.sku || ''}`,
         plateCenter: `${b.plate || ''} ${b.costCenter || ''}`,
         status: String(PO_STATUS_LABELS[b.status] || b.status),
@@ -531,7 +547,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       };
       return valueA[poSortKey].localeCompare(valueB[poSortKey], 'pt-BR', { numeric: true }) * factor;
     });
-  }, [orders, poSearch, poPlateFilter, poCostCenterFilter, poSortKey, poSortDirection]);
+  }, [orders, poSearch, poPlateFilter, poCostCenterFilter, poStatusFilter, poRequesterFilter, poSortKey, poSortDirection]);
 
   const paginatedFilteredOrders = useMemo(() => {
     const startIndex = Math.max(0, (currentPage - 1) * pageSize);
@@ -551,6 +567,25 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     orders.forEach((order) => {
       const value = String(order.costCenter || '').trim();
       if (value) values.add(value);
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [orders]);
+
+
+  const requesterOptions = useMemo(() => {
+    const values = new Set<string>();
+    orders.forEach((order) => {
+      const value = String(order.requester || '').trim();
+      if (value) values.add(value);
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [orders]);
+
+  const statusOptions = useMemo(() => {
+    const values = new Set<string>();
+    orders.forEach((order) => {
+      const statusLabel = String(PO_STATUS_LABELS[order.status] || order.status || '').trim();
+      if (statusLabel) values.add(statusLabel);
     });
     return Array.from(values).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [orders]);
@@ -727,7 +762,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       status: 'requisicao',
       priority,
       total: 0,
-      requester: 'Ricardo Souza (Manual)',
+      requester: user.name,
       plate: plate.toUpperCase(),
       costCenter: costCenter,
       warehouseId: activeWarehouse,
@@ -764,6 +799,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     setQuotingPO(order);
     setQuotationMode('edit');
     initializeItemQuoteState(order);
+    setSelectedQuoteId('');
     setIsQuotationModalOpen(true);
   };
 
@@ -771,7 +807,24 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     setQuotingPO(order);
     setQuotationMode('analyze');
     initializeItemQuoteState(order);
+    setSelectedQuoteId(order.selectedQuoteId || getRecommendedQuoteId(order));
     setIsQuotationModalOpen(true);
+  };
+
+  const quoteCoversAllOrderItems = (order: PurchaseOrder, quote: Quote) =>
+    order.items.every((item) => {
+      const quotedItem = quote.items?.find((entry) => entry.sku === item.sku);
+      return quotedItem && Number(quotedItem.unitPrice) > 0;
+    });
+
+  const getRecommendedQuoteId = (order: PurchaseOrder) => {
+    const orderQuotes = order.quotes || [];
+    if (orderQuotes.length === 0) return '';
+
+    const comparableQuotes = orderQuotes.filter((quote) => quoteCoversAllOrderItems(order, quote));
+    const source = comparableQuotes.length > 0 ? comparableQuotes : orderQuotes;
+    const bestQuote = source.reduce((prev, curr) => (curr.totalValue < prev.totalValue ? curr : prev));
+    return bestQuote.id;
   };
 
   const handleSubmitQuotations = () => {
@@ -878,6 +931,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     setItemVisibleQuoteForms({});
     setItemVendorSearch({});
     setItemVendorSearchOpen({});
+    setSelectedQuoteId('');
   };
 
   const handleSendQuotationToApproval = (order: PurchaseOrder) => {
@@ -886,12 +940,13 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       return;
     }
 
-    // Auto-select the quote with the lowest total value
-    const bestQuote = order.quotes.reduce((prev, curr) =>
-      curr.totalValue < prev.totalValue ? curr : prev
-    );
+    const recommendedQuoteId = getRecommendedQuoteId(order);
+    if (!recommendedQuoteId) {
+      alert('Não foi possível sugerir uma cotação válida para aprovação.');
+      return;
+    }
 
-    onSendToApproval(order.id, bestQuote.id);
+    onSendToApproval(order.id, recommendedQuoteId);
   };
 
   const handleOpenSendModal = (order: PurchaseOrder) => {
@@ -1530,8 +1585,12 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       <div className="px-10 pb-10 pt-4 space-y-8">
         {quotingPO.items.map((item, itemIndex) => {
           const visibleSlots = Math.max(1, Math.min(5, itemVisibleQuoteForms[item.sku] ?? 1));
-          const selectedQuoteSlot = quotingPO.selectedQuoteId
-            ? (quotingPO.quotes || []).findIndex((quote) => quote.id === quotingPO.selectedQuoteId)
+          const recommendedQuoteId = getRecommendedQuoteId(quotingPO);
+          const selectedQuoteSlot = selectedQuoteId
+            ? (quotingPO.quotes || []).findIndex((quote) => quote.id === selectedQuoteId)
+            : -1;
+          const suggestedQuoteSlot = recommendedQuoteId
+            ? (quotingPO.quotes || []).findIndex((quote) => quote.id === recommendedQuoteId)
             : -1;
 
           return (
@@ -1587,7 +1646,8 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
 
                   const theme = quoteSlotThemes[slotIndex] || quoteSlotThemes[quoteSlotThemes.length - 1];
                   const quoteLabel = quoteSlotLabels[slotIndex] || `${slotIndex + 1}ª`;
-                  const isSelectedSuggestion = quotationMode === 'analyze' && selectedQuoteSlot === slotIndex;
+                  const isManuallySelected = quotationMode === 'analyze' && selectedQuoteSlot === slotIndex;
+                  const isSuggestedQuote = quotationMode === 'analyze' && suggestedQuoteSlot === slotIndex;
 
                   return (
                     <div key={`${item.sku}-slot-${slotIndex}`} className={`space-y-4 p-5 rounded-3xl border-2 ${theme.container}`}>
@@ -1597,8 +1657,22 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                           <h4 className={`text-[11px] font-black uppercase tracking-widest ${theme.title}`}>{quoteLabel} Cotação</h4>
                         </div>
                         <div className="flex items-center gap-2">
-                          {isSelectedSuggestion && (
+                          {isSuggestedQuote && (
+                            <span className="px-3 py-1 bg-blue-500 text-white text-[9px] font-black rounded-lg uppercase tracking-widest">Sugerida</span>
+                          )}
+                          {isManuallySelected && (
                             <span className="px-3 py-1 bg-emerald-500 text-white text-[9px] font-black rounded-lg uppercase tracking-widest">Selecionada</span>
+                          )}
+                          {quotationMode === 'analyze' && quotingPO?.quotes?.[slotIndex]?.id && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedQuoteId(String(quotingPO.quotes?.[slotIndex]?.id || ''))}
+                              className={`px-3 py-1 text-[9px] font-black rounded-lg uppercase tracking-widest border transition-all ${isManuallySelected
+                                ? 'bg-emerald-50 text-emerald-600 border-emerald-300'
+                                : 'bg-white/80 text-slate-500 border-slate-300 hover:border-emerald-300 hover:text-emerald-600'}`}
+                            >
+                              {isManuallySelected ? 'Escolhida' : 'Escolher'}
+                            </button>
                           )}
                           {quotationMode !== 'analyze' && slotIndex > 0 && (
                             <button
@@ -1741,7 +1815,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       />
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           <div className="relative">
             <svg xmlns="http://www.w3.org/2000/svg" className="size-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
@@ -1760,17 +1834,37 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
             value={poPlateFilter}
             onChange={(e) => setPoPlateFilter(e.target.value)}
             placeholder="Filtrar por placa"
-            className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all uppercase"
+            className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
           />
+          <select
+            value={poCostCenterFilter}
+            onChange={(e) => setPoCostCenterFilter(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
+          >
+            <option value="">Todos os centros de custo</option>
+            {costCenterOptions.map((center) => (
+              <option key={center} value={center}>{center}</option>
+            ))}
+          </select>
+          <select
+            value={poStatusFilter}
+            onChange={(e) => setPoStatusFilter(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
+          >
+            <option value="">Todos os status</option>
+            {statusOptions.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
           <div className="flex gap-2">
             <select
-              value={poCostCenterFilter}
-              onChange={(e) => setPoCostCenterFilter(e.target.value)}
+              value={poRequesterFilter}
+              onChange={(e) => setPoRequesterFilter(e.target.value)}
               className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
             >
-              <option value="">Todos os centros de custo</option>
-              {costCenterOptions.map((center) => (
-                <option key={center} value={center}>{center}</option>
+              <option value="">Todos os solicitantes</option>
+              {requesterOptions.map((requester) => (
+                <option key={requester} value={requester}>{requester}</option>
               ))}
             </select>
             <button
@@ -1794,11 +1888,12 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
             <thead>
               <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 <th className="px-8 py-6 cursor-pointer select-none" onClick={() => togglePoSort('id')}>ID Pedido {poSortKey === 'id' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                <th className="px-8 py-6 cursor-pointer select-none" onClick={() => togglePoSort('requestDate')}>Data Solicitação {poSortKey === 'requestDate' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                 <th className="px-8 py-6 cursor-pointer select-none" onClick={() => togglePoSort('product')}>Produto / Cód. Produto {poSortKey === 'product' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                 <th className="px-8 py-6 cursor-pointer select-none" onClick={() => togglePoSort('plateCenter')}>Placa / Centro de Custo {poSortKey === 'plateCenter' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                 <th className="px-8 py-6 text-center cursor-pointer select-none" onClick={() => togglePoSort('status')}>Status {poSortKey === 'status' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                 <th className="px-8 py-6 text-center cursor-pointer select-none" onClick={() => togglePoSort('priority')}>Prioridade {poSortKey === 'priority' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                <th className="px-8 py-6 text-right">Ações</th>
+                <th className="px-8 py-6 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1806,7 +1901,9 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                 <tr key={order.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
                   <td className="px-8 py-5">
                     <span className="font-black text-sm text-slate-800 dark:text-white">{order.id}</span>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">{order.requestDate}</p>
+                  </td>
+                  <td className="px-8 py-5">
+                    <p className="text-[11px] font-black text-slate-700 dark:text-slate-200">{formatDatePtBR(order.requestDate, order.requestDate)}</p>
                   </td>
                   <td className="px-8 py-5">
                     <div className="flex flex-col max-w-[200px]">
@@ -1867,8 +1964,8 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                         </button>
                       )}
 
-                      {/* Botões de Aprovação/Rejeição - apenas para status pendente e ADMIN */}
-                      {order.status === 'pendente' && user.role === 'admin' && (
+                      {/* Botões de Aprovação/Rejeição - apenas para status pendente e perfis aprovadores */}
+                      {order.status === 'pendente' && canApprovePurchaseOrders && (
                         <>
                           <button
                             onClick={() => setRejectionOrderId(order.id)}
@@ -1913,7 +2010,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center text-slate-400 font-black uppercase text-xs tracking-widest">
+                  <td colSpan={7} className="px-8 py-20 text-center text-slate-400 font-black uppercase text-xs tracking-widest">
                     {isPageLoading ? 'Carregando pedidos...' : 'Nenhum pedido de compra encontrado para o filtro informado.'}
                   </td>
                 </tr>
@@ -2373,7 +2470,14 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                       Rejeitar
                     </button>
                     <button
-                      onClick={() => { onApprove(quotingPO.id); setIsQuotationModalOpen(false); resetQuotationForm(); }}
+                      onClick={async () => {
+                        if (selectedQuoteId && selectedQuoteId !== quotingPO.selectedQuoteId) {
+                          await onUpdateSelectedQuote(quotingPO.id, selectedQuoteId);
+                        }
+                        onApprove(quotingPO.id);
+                        setIsQuotationModalOpen(false);
+                        resetQuotationForm();
+                      }}
                       className="px-8 py-3 bg-green-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-green-500/20 hover:bg-green-600 transition-all active:scale-95"
                     >
                       Aprovar Agora
@@ -3079,4 +3183,3 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     </div>
   );
 };
-

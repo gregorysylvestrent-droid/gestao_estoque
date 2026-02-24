@@ -534,6 +534,8 @@ export const App: React.FC = () => {
   const [materialRequestsPage, setMaterialRequestsPage] = useState(1);
   const [masterDataItemsPage, setMasterDataItemsPage] = useState(1);
   const [vendorsPage, setVendorsPage] = useState(1);
+  const [masterDataItemsPageSize, setMasterDataItemsPageSize] = useState(25);
+  const [vendorsPageSize, setVendorsPageSize] = useState(25);
   const [pagedMovements, setPagedMovements] = useState<Movement[]>([]);
   const [pagedPurchaseOrders, setPagedPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [pagedMaterialRequests, setPagedMaterialRequests] = useState<MaterialRequest[]>([]);
@@ -569,8 +571,7 @@ export const App: React.FC = () => {
   const MOVEMENTS_PAGE_SIZE = 50; // Reduzido de 120
   const PURCHASE_ORDERS_PAGE_SIZE = 30; // Reduzido de 60
   const MATERIAL_REQUESTS_PAGE_SIZE = 30; // Reduzido de 60
-  const MASTER_DATA_ITEMS_PAGE_SIZE = 50;
-  const VENDORS_PAGE_SIZE = 50;
+  const MASTER_DATA_PAGE_SIZE_OPTIONS = [25, 50, 100];
   const PURCHASE_ORDER_RECEIVED_RETENTION_MS = 24 * 60 * 60 * 1000;
   const PURCHASE_ORDER_EXPIRY_CHECK_INTERVAL_MS = 60 * 1000;
 
@@ -1416,8 +1417,8 @@ export const App: React.FC = () => {
     const requestId = ++pageFetchSequence.current.masterDataItems;
     setIsMasterDataItemsPageLoading(true);
 
-    const offset = (safePage - 1) * MASTER_DATA_ITEMS_PAGE_SIZE;
-    const pageLimit = MASTER_DATA_ITEMS_PAGE_SIZE + 1;
+    const offset = (safePage - 1) * masterDataItemsPageSize;
+    const pageLimit = masterDataItemsPageSize + 1;
 
     const runInventoryPageQuery = async (
       strategy: 'unscoped' | 'warehouse' | 'all'
@@ -1468,8 +1469,8 @@ export const App: React.FC = () => {
       if (requestId !== pageFetchSequence.current.masterDataItems) return;
 
       const mapped = mapInventoryRows(selectedRows);
-      setHasMoreMasterDataItems(mapped.length > MASTER_DATA_ITEMS_PAGE_SIZE);
-      setPagedMasterDataItems(mapped.slice(0, MASTER_DATA_ITEMS_PAGE_SIZE));
+      setHasMoreMasterDataItems(mapped.length > masterDataItemsPageSize);
+      setPagedMasterDataItems(mapped.slice(0, masterDataItemsPageSize));
 
       // Count é best-effort: se falhar, usa ao menos o tamanho da página carregada.
       let total = mapped.length;
@@ -1518,8 +1519,8 @@ export const App: React.FC = () => {
           .from('vendors')
           .select('*')
           .order('created_at', { ascending: false })
-          .limit(VENDORS_PAGE_SIZE + 1)
-          .offset((safePage - 1) * VENDORS_PAGE_SIZE),
+          .limit(vendorsPageSize + 1)
+          .offset((safePage - 1) * vendorsPageSize),
       ]);
 
       if (requestId !== pageFetchSequence.current.vendors) return;
@@ -1529,8 +1530,8 @@ export const App: React.FC = () => {
 
       const rows = Array.isArray((rowsResponse as any)?.data) ? (rowsResponse as any).data : [];
       const mapped = mapVendorRows(rows);
-      setHasMoreVendors(mapped.length > VENDORS_PAGE_SIZE);
-      setPagedVendors(mapped.slice(0, VENDORS_PAGE_SIZE));
+      setHasMoreVendors(mapped.length > vendorsPageSize);
+      setPagedVendors(mapped.slice(0, vendorsPageSize));
     } catch (error) {
       if (requestId !== pageFetchSequence.current.vendors) return;
       console.error('Erro ao carregar pagina do cadastro de fornecedores:', error);
@@ -1733,13 +1734,13 @@ export const App: React.FC = () => {
     if (activeModule !== 'cadastro') return;
     if (!user) return;
     void fetchMasterDataItemsPage(masterDataItemsPage);
-  }, [activeModule, user, activeWarehouse, masterDataItemsPage]);
+  }, [activeModule, user, activeWarehouse, masterDataItemsPage, masterDataItemsPageSize]);
 
   useEffect(() => {
     if (activeModule !== 'cadastro') return;
     if (!user) return;
     void fetchVendorsPage(vendorsPage);
-  }, [activeModule, user, vendorsPage]);
+  }, [activeModule, user, vendorsPage, vendorsPageSize]);
 
   useEffect(() => {
     if (!user) return;
@@ -2417,6 +2418,40 @@ export const App: React.FC = () => {
         'info'
       );
       showNotification(`Pedido ${poId} enviado para aprovação!`, 'success');
+    }
+  };
+
+const handleUpdateSelectedQuote = async (poId: string, selectedQuoteId: string) => {
+    const po = purchaseOrders.find((entry) => entry.id === poId);
+    if (!po) return;
+
+    const selectedQuote = po.quotes?.find((quote) => quote.id === selectedQuoteId);
+    if (!selectedQuote) return;
+
+    const updatedQuotes = po.quotes?.map((quote) => ({ ...quote, isSelected: quote.id === selectedQuoteId }));
+
+    const { error } = await api.from('purchase_orders').eq('id', poId).update({
+      selected_quote_id: selectedQuoteId,
+      vendor: selectedQuote.vendorName,
+      total: selectedQuote.totalValue,
+      quotes: updatedQuotes
+    });
+
+    if (!error) {
+      setPurchaseOrders((prev) => prev.map((order) => order.id === poId ? {
+        ...order,
+        selectedQuoteId,
+        vendor: selectedQuote.vendorName,
+        total: selectedQuote.totalValue,
+        quotes: updatedQuotes
+      } : order));
+      setPagedPurchaseOrders((prev) => prev.map((order) => order.id === poId ? {
+        ...order,
+        selectedQuoteId,
+        vendor: selectedQuote.vendorName,
+        total: selectedQuote.totalValue,
+        quotes: updatedQuotes
+      } : order));
     }
   };
 
@@ -5000,6 +5035,7 @@ export const App: React.FC = () => {
                     onCreateOrder={handleCreatePO}
                     onAddQuotes={handleAddQuotes}
                     onSendToApproval={handleSendToApproval}
+                    onUpdateSelectedQuote={handleUpdateSelectedQuote}
                     onMarkAsSent={handleMarkAsSent}
                     onApprove={handleApprovePO}
                     onReject={handleRejectPO}
@@ -5021,19 +5057,29 @@ export const App: React.FC = () => {
                     onImportRecords={handleImportMasterRecords}
                     inventoryPagination={{
                       currentPage: masterDataItemsPage,
-                      pageSize: MASTER_DATA_ITEMS_PAGE_SIZE,
+                      pageSize: masterDataItemsPageSize,
                       totalItems: masterDataItemsTotal,
                       hasNextPage: hasMoreMasterDataItems,
                       isLoading: isMasterDataItemsPageLoading,
                       onPageChange: setMasterDataItemsPage,
+                      pageSizeOptions: MASTER_DATA_PAGE_SIZE_OPTIONS,
+                      onPageSizeChange: (nextSize) => {
+                        setMasterDataItemsPage(1);
+                        setMasterDataItemsPageSize(nextSize);
+                      },
                     }}
                     vendorsPagination={{
                       currentPage: vendorsPage,
-                      pageSize: VENDORS_PAGE_SIZE,
+                      pageSize: vendorsPageSize,
                       totalItems: vendorsTotal,
                       hasNextPage: hasMoreVendors,
                       isLoading: isVendorsPageLoading,
                       onPageChange: setVendorsPage,
+                      pageSizeOptions: MASTER_DATA_PAGE_SIZE_OPTIONS,
+                      onPageSizeChange: (nextSize) => {
+                        setVendorsPage(1);
+                        setVendorsPageSize(nextSize);
+                      },
                     }}
                   />
                 )}

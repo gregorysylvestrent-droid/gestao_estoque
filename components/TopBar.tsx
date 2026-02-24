@@ -170,7 +170,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           >
             <div className="text-right hidden sm:block">
               <p className="text-xs font-black text-slate-800 dark:text-white group-hover:text-primary transition-colors">{user?.name || 'Admin'}</p>
-              <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-tight">{user?.role === 'admin' ? 'Gestor' : 'Assistente'}</p>
+              <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-tight">{['admin', 'fleet_supervisor', 'mechanic_supervisor'].includes(user?.role) ? 'Gestão' : 'Assistente Adm'}</p>
             </div>
             <div className="relative">
               <img

@@ -22,7 +22,8 @@ export const ROLE_LABELS = {
   driver: 'Motorista',
   operator: 'Operador',
   checker: 'Conferente',
-  mechanic_supervisor: 'Supervisor Mecânico'
+  mechanic_supervisor: 'Supervisor de Oficina',
+  fleet_supervisor: 'Supervisor de Frota'
 };
 
 export const PO_STATUS_LABELS = {
@@ -189,7 +190,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'buyer' | 'manager' | 'driver' | 'operator' | 'checker' | 'mechanic_supervisor';
+  role: 'admin' | 'buyer' | 'manager' | 'driver' | 'operator' | 'checker' | 'mechanic_supervisor' | 'fleet_supervisor';
   status: 'Ativo' | 'Inativo';
   lastAccess: string;
   avatar: string;
