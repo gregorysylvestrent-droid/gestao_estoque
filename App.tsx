@@ -2410,6 +2410,14 @@ export const App: React.FC = () => {
     const selectedQuote = po.quotes?.find(q => q.id === selectedQuoteId);
     if (!selectedQuote) return;
 
+        const adjustedItems = po.items.map((item) => {
+      const quotedItem = selectedQuote.items?.find((quoteItem) => quoteItem.sku === item.sku);
+      return {
+        ...item,
+        qty: quotedItem && Number(quotedItem.unitPrice) > 0 ? item.qty : 0,
+      };
+    });
+
     const updatedQuotes = po.quotes?.map(q => ({ ...q, isSelected: q.id === selectedQuoteId }));
     const newApprovalHistory = appendPOHistory(
       po.approvalHistory,
@@ -2421,7 +2429,7 @@ export const App: React.FC = () => {
       vendor: selectedQuote.vendorName,
       total: selectedQuote.totalValue,
       status: 'pendente',
-      quotes: updatedQuotes,
+      items: adjustedItems,
       approval_history: newApprovalHistory
     });
 
@@ -2432,6 +2440,7 @@ export const App: React.FC = () => {
         vendor: selectedQuote.vendorName,
         total: selectedQuote.totalValue,
         status: 'pendente' as const,
+        items: adjustedItems,
         quotes: updatedQuotes,
         approvalHistory: newApprovalHistory
       } : o));
@@ -2442,6 +2451,7 @@ export const App: React.FC = () => {
         total: selectedQuote.totalValue,
         status: 'pendente' as const,
         quotes: updatedQuotes,
+        items: adjustedItems,
         approvalHistory: newApprovalHistory
       } : o));
       addActivity('compra', 'Cotações Enviadas', `Pedido ${poId} enviado para aprovação do gestor`);
