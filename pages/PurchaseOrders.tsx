@@ -609,6 +609,36 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   const buildEmptyItemForms = () =>
     Array.from({ length: 5 }, () => createEmptyItemQuoteForm());
 
+  const parseQuoteMoney = (raw: string) => {
+    const normalized = String(raw || '').replace(',', '.').trim();
+    const value = Number(normalized);
+    return Number.isFinite(value) ? value : 0;
+  };
+
+  const getQuoteItemTotalBySku = (order: PurchaseOrder, quote: Quote, sku: string) => {
+    const orderItem = order.items.find((item) => item.sku === sku);
+    const quotedItem = quote.items?.find((item) => item.sku === sku);
+    if (!orderItem || !quotedItem) return 0;
+
+    const qty = Number(orderItem.qty || 0);
+    const unitPrice = Number(quotedItem.unitPrice || 0);
+    if (!Number.isFinite(qty) || !Number.isFinite(unitPrice) || qty <= 0 || unitPrice <= 0) return 0;
+
+    return qty * unitPrice;
+  };
+
+  const getQuoteTotalBySkuSum = (order: PurchaseOrder, quote: Quote) =>
+    order.items.reduce((sum, item) => sum + getQuoteItemTotalBySku(order, quote, item.sku), 0);
+
+  const getQuoteSlotAutoTotal = (order: PurchaseOrder, slotIndex: number) =>
+    order.items.reduce((sum, item) => {
+      const visibleSlots = Math.max(1, Math.min(5, itemVisibleQuoteForms[item.sku] ?? 1));
+      if (slotIndex >= visibleSlots) return sum;
+
+      const form = getItemForm(item.sku, slotIndex);
+      return sum + parseQuoteMoney(form.totalValue);
+    }, 0);
+
   const initializeItemQuoteState = (order: PurchaseOrder) => {
     const formsByItem: Record<string, ItemQuoteForm[]> = {};
     const visibleByItem: Record<string, number> = {};
@@ -823,17 +853,21 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
 
     const comparableQuotes = orderQuotes.filter((quote) => quoteCoversAllOrderItems(order, quote));
     const source = comparableQuotes.length > 0 ? comparableQuotes : orderQuotes;
-    const bestQuote = source.reduce((prev, curr) => (curr.totalValue < prev.totalValue ? curr : prev));
+    const bestQuote = source.reduce((prev, curr) => {
+      const previousSumBySku = getQuoteTotalBySkuSum(order, prev);
+      const currentSumBySku = getQuoteTotalBySkuSum(order, curr);
+
+      if (currentSumBySku === previousSumBySku) {
+        return curr.totalValue < prev.totalValue ? curr : prev;
+      }
+
+      return currentSumBySku < previousSumBySku ? curr : prev;
+    });
     return bestQuote.id;
   };
 
   const handleSubmitQuotations = () => {
     if (!quotingPO) return;
-    const parseMoney = (raw: string) => {
-      const normalized = String(raw || '').replace(',', '.').trim();
-      const value = Number(normalized);
-      return Number.isFinite(value) ? value : 0;
-    };
 
     const now = Date.now();
     const quotes: Quote[] = [];
@@ -858,7 +892,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       if (!anyFilled) continue;
 
       const hasInvalidRequired = visibleEntries.some(({ form }) => {
-        const total = parseMoney(form.totalValue);
+        const total = parseQuoteMoney(form.totalValue);
         return !form.vendorId || total <= 0;
       });
       if (hasInvalidRequired) {
@@ -874,7 +908,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
 
       const vendorId = visibleEntries[0].form.vendorId;
       const vendorName = vendors.find((vendor) => vendor.id === vendorId)?.name || '';
-      const totalValue = visibleEntries.reduce((sum, { form }) => sum + parseMoney(form.totalValue), 0);
+      const totalValue = visibleEntries.reduce((sum, { form }) => sum + parseQuoteMoney(form.totalValue), 0);
       const validUntil = visibleEntries.find(({ form }) => form.validUntil)?.form.validUntil
         || formatDatePtBR(new Date(now + 30 * 24 * 60 * 60 * 1000), '--/--/----');
       const noteList = Array.from(
@@ -891,7 +925,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
         vendorId,
         vendorName,
         items: visibleEntries.map(({ item, form }) => {
-          const itemTotal = parseMoney(form.totalValue);
+          const itemTotal = parseQuoteMoney(form.totalValue);
           const qty = Number(item.qty || 0);
           const safeQty = qty > 0 ? qty : 1;
           return {
@@ -1034,11 +1068,6 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   const handlePrintQuotationSheet = () => {
     if (!quotingPO) return;
 
-    const parseQuoteValue = (raw: string) => {
-      const normalized = String(raw || '').replace(',', '.').trim();
-      const value = Number(normalized);
-      return Number.isFinite(value) ? value : 0;
-    };
 
     const logoUrl = "https://teslaeventos.com.br/assets/logos/NORTETECH-CIRCLE.png";
     const issuedAt = formatDateTimePtBR(new Date(), '--/--/---- --:--:--');
@@ -1048,7 +1077,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       const rows = Array.from({ length: visibleSlots }).map((_, slotIndex) => {
         const form = getItemForm(item.sku, slotIndex);
         const vendor = vendors.find((entry) => entry.id === form.vendorId);
-        const totalValue = parseQuoteValue(form.totalValue);
+        const totalValue = parseQuoteMoney(form.totalValue);
         const unitValue = Number(item.qty || 0) > 0 ? totalValue / Number(item.qty || 1) : 0;
         const validUntil = form.validUntil ? formatDatePtBR(form.validUntil, '-') : '-';
         const note = String(form.notes || '').trim() || '-';
@@ -1648,6 +1677,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                   const quoteLabel = quoteSlotLabels[slotIndex] || `${slotIndex + 1}ª`;
                   const isManuallySelected = quotationMode === 'analyze' && selectedQuoteSlot === slotIndex;
                   const isSuggestedQuote = quotationMode === 'analyze' && suggestedQuoteSlot === slotIndex;
+                  const autoTotalBySlot = getQuoteSlotAutoTotal(quotingPO, slotIndex);
 
                   return (
                     <div key={`${item.sku}-slot-${slotIndex}`} className={`space-y-4 p-5 rounded-3xl border-2 ${theme.container}`}>
@@ -1689,6 +1719,12 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                             </button>
                           )}
                         </div>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <span className="px-3 py-1 rounded-lg bg-white/80 border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          Auto-soma cotação: {formatCurrencyBRL(autoTotalBySlot)}
+                        </span>
                       </div>
 
                       <div className="space-y-2 relative">
