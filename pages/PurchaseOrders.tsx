@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { PurchaseOrder, Vendor, InventoryItem, Quote, User, PO_STATUS_LABELS, CyclicBatch, CyclicCount, Vehicle } from '../types';
 import { PaginationBar } from '../components/PaginationBar';
@@ -640,6 +640,19 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       return sum + parseQuoteMoney(form.totalValue);
     }, 0);
 
+  const getSelectedQuotesAutoTotal = (order: PurchaseOrder) =>
+    order.items.reduce((sum, item) => {
+      const selectedQuoteForItem = selectedQuoteIdByItem[item.sku]
+        || selectedQuoteId
+        || getRecommendedQuoteIdByItem(order, item.sku);
+      if (!selectedQuoteForItem) return sum;
+
+      const selectedQuote = (order.quotes || []).find((quote) => quote.id === selectedQuoteForItem);
+      if (!selectedQuote) return sum;
+
+      return sum + getQuoteItemTotalBySku(order, selectedQuote, item.sku);
+    }, 0);
+
   const initializeItemQuoteState = (order: PurchaseOrder) => {
     const formsByItem: Record<string, ItemQuoteForm[]> = {};
     const visibleByItem: Record<string, number> = {};
@@ -928,29 +941,37 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       );
       if (!anyFilled) continue;
 
-      const hasInvalidRequired = visibleEntries.some(({ form }) => {
+      const completeEntries = visibleEntries.filter(({ form }) => {
         const total = parseQuoteMoney(form.totalValue);
-        return !form.vendorId || total <= 0;
+        return Boolean(form.vendorId && total > 0);
       });
-      if (hasInvalidRequired) {
-        alert(`Preencha fornecedor e valor para todos os itens da cotação ${slotIndex + 1}.`);
+
+      const hasInvalidPartial = visibleEntries.some(({ form }) => {
+        const total = parseQuoteMoney(form.totalValue);
+        const isEmpty = !form.vendorId && total <= 0 && !form.validUntil && !form.notes;
+        const isComplete = Boolean(form.vendorId && total > 0);
+        return !isEmpty && !isComplete;
+      });
+
+      if (hasInvalidPartial) {
+        alert(`Na cotação ${slotIndex + 1}, preencha fornecedor e valor para os itens informados.`);
         return;
       }
 
       const vendorIds = new Set(visibleEntries.map(({ form }) => form.vendorId));
       if (vendorIds.size !== 1) {
-        alert(`Na cotação ${slotIndex + 1}, use o mesmo fornecedor para todos os itens exibidos.`);
+        alert(`Na cotação ${slotIndex + 1}, use o mesmo fornecedor para todos os itens preenchidos.`);
         return;
       }
 
-      const vendorId = visibleEntries[0].form.vendorId;
+      const vendorId = completeEntries[0].form.vendorId;
       const vendorName = vendors.find((vendor) => vendor.id === vendorId)?.name || '';
-      const totalValue = visibleEntries.reduce((sum, { form }) => sum + parseQuoteMoney(form.totalValue), 0);
-      const validUntil = visibleEntries.find(({ form }) => form.validUntil)?.form.validUntil
+      const totalValue = completeEntries.reduce((sum, { form }) => sum + parseQuoteMoney(form.totalValue), 0);
+      const validUntil = completeEntries.find(({ form }) => form.validUntil)?.form.validUntil
         || formatDatePtBR(new Date(now + 30 * 24 * 60 * 60 * 1000), '--/--/----');
       const noteList = Array.from(
         new Set(
-          visibleEntries
+          completeEntries
             .map(({ form }) => String(form.notes || '').trim())
             .filter(Boolean),
         ),
@@ -961,7 +982,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
         id: `Q${slotIndex + 1}-${now + slotIndex}`,
         vendorId,
         vendorName,
-        items: visibleEntries.map(({ item, form }) => {
+        items: completeEntries.map(({ item, form }) => {
           const itemTotal = parseQuoteMoney(form.totalValue);
           const qty = Number(item.qty || 0);
           const safeQty = qty > 0 ? qty : 1;
@@ -2599,11 +2620,20 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                     </svg>
                     Itens a Cotar
                   </h4>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm font-black text-slate-800 dark:text-white">
-                    <span>PLACA: <span className="font-semibold text-slate-600 dark:text-slate-300">{quotingPO.plate || '-'}</span></span>
-                    <span>ANO: <span className="font-semibold text-slate-600 dark:text-slate-300">{selectedVehicle?.year ?? '-'}</span></span>
-                    <span>CHASSI: <span className="font-semibold text-slate-600 dark:text-slate-300">{selectedVehicle?.chassis || '-'}</span></span>
-                    <span>RENAVAM: <span className="font-semibold text-slate-600 dark:text-slate-300">{selectedVehicle?.renavam || '-'}</span></span>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm font-black text-slate-800 dark:text-white">
+                      <span>PLACA: <span className="font-semibold text-slate-600 dark:text-slate-300">{quotingPO.plate || '-'}</span></span>
+                      <span>ANO: <span className="font-semibold text-slate-600 dark:text-slate-300">{selectedVehicle?.year ?? '-'}</span></span>
+                      <span>CHASSI: <span className="font-semibold text-slate-600 dark:text-slate-300">{selectedVehicle?.chassis || '-'}</span></span>
+                      <span>RENAVAM: <span className="font-semibold text-slate-600 dark:text-slate-300">{selectedVehicle?.renavam || '-'}</span></span>
+                    </div>
+                    {quotationMode === 'analyze' && (
+                      <div className="flex justify-end">
+                        <span className="px-3 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          Auto-soma selecionadas: {formatCurrencyBRL(getSelectedQuotesAutoTotal(quotingPO))}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-3">
