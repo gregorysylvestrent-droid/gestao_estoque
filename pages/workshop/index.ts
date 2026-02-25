@@ -6,7 +6,6 @@ export { PreventiveDashboard } from './PreventiveDashboard';
 export { MaintenancePlanWizard } from './MaintenancePlanWizard';
 export { ScheduleDetail } from './ScheduleDetail';
 export { InspectionChecklistEditor } from './InspectionChecklistEditor';
-export { VehicleManagement } from './VehicleManagement';
 export { MechanicProductivity } from './MechanicProductivity';
 export { WorkshopPanel } from './WorkshopPanel';
 

@@ -1,7 +1,0 @@
-﻿diff --git a/api-backend/data/fleet_fiscal_obligations.json b/api-backend/data/fleet_fiscal_obligations.json
-new file mode 100644
-index 0000000..fe51488
---- /dev/null
-+++ b/api-backend/data/fleet_fiscal_obligations.json
-@@ -0,0 +1 @@
-+[]
