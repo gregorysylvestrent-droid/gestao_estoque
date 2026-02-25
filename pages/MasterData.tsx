@@ -25,6 +25,10 @@ interface MasterDataProps {
   onImportRecords: (type: 'item' | 'vendor' | 'vehicle', data: any[]) => void;
   inventoryPagination?: InventoryPagination;
   vendorsPagination?: InventoryPagination;
+  inventorySearchTerm?: string;
+  vendorsSearchTerm?: string;
+  onInventorySearchChange?: (value: string) => void;
+  onVendorsSearchChange?: (value: string) => void;
 }
 
 const ITEMS_PER_PAGE = 25;
@@ -67,6 +71,10 @@ export const MasterData: React.FC<MasterDataProps> = ({
   onImportRecords,
   inventoryPagination,
   vendorsPagination,
+  inventorySearchTerm,
+  vendorsSearchTerm,
+  onInventorySearchChange,
+  onVendorsSearchChange,
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('itens');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -80,6 +88,12 @@ export const MasterData: React.FC<MasterDataProps> = ({
   const [localVehiclesPageSize, setLocalVehiclesPageSize] = useState(ITEMS_PER_PAGE);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const effectiveSearchTerm = activeTab === 'itens' && inventoryPagination
+    ? (inventorySearchTerm ?? '')
+    : activeTab === 'fornecedores' && vendorsPagination
+      ? (vendorsSearchTerm ?? '')
+      : searchTerm;
+
   useEffect(() => {
     if (activeTab === 'itens' && inventoryPagination) {
       inventoryPagination.onPageChange(1);
@@ -91,28 +105,34 @@ export const MasterData: React.FC<MasterDataProps> = ({
     setLocalVendorsPage(1);
     setLocalVehiclesPage(1);
     setSearchTerm('');
+    onInventorySearchChange?.('');
+    onVendorsSearchChange?.('');
   }, [activeTab]);
 
-  const normalizedSearch = searchTerm.trim().toLowerCase();
-  const normalizedSearchDigits = normalizeDigits(searchTerm);
+  const normalizedSearch = effectiveSearchTerm.trim().toLowerCase();
+  const normalizedSearchDigits = normalizeDigits(effectiveSearchTerm);
   const isSearching = normalizedSearch.length > 0;
+  const isItemsRemotePagination = Boolean(inventoryPagination);
+  const isVendorsRemotePagination = Boolean(vendorsPagination);
 
   const filteredInventory = useMemo(() => {
+    if (isItemsRemotePagination) return inventory;
     if (!isSearching) return inventory;
     return inventory.filter((item) =>
       String(item.sku || '').toLowerCase().includes(normalizedSearch) ||
       String(item.name || '').toLowerCase().includes(normalizedSearch)
     );
-  }, [inventory, isSearching, normalizedSearch]);
+  }, [inventory, isItemsRemotePagination, isSearching, normalizedSearch]);
 
   const filteredVendors = useMemo(() => {
+    if (isVendorsRemotePagination) return vendors;
     if (!isSearching) return vendors;
     return vendors.filter((vendor) => {
       const razaoSocial = String(vendor.razaoSocial || vendor.name || '').toLowerCase();
       const cnpjDigits = normalizeDigits(vendor.cnpj);
       return razaoSocial.includes(normalizedSearch) || (normalizedSearchDigits && cnpjDigits.includes(normalizedSearchDigits));
     });
-  }, [vendors, isSearching, normalizedSearch, normalizedSearchDigits]);
+  }, [vendors, isVendorsRemotePagination, isSearching, normalizedSearch, normalizedSearchDigits]);
 
   const filteredVehicles = useMemo(() => {
     if (!isSearching) return vehicles;
@@ -124,23 +144,17 @@ export const MasterData: React.FC<MasterDataProps> = ({
     });
   }, [vehicles, isSearching, normalizedSearch]);
 
-  const isItemsRemotePagination = Boolean(inventoryPagination);
   const currentPage = inventoryPagination?.currentPage ?? localItemsPage;
   const pageSize = inventoryPagination?.pageSize ?? localItemsPageSize;
-  const hasNextPage = isSearching
-    ? false
-    : inventoryPagination?.hasNextPage ?? currentPage * pageSize < filteredInventory.length;
+  const hasNextPage = inventoryPagination?.hasNextPage ?? currentPage * pageSize < filteredInventory.length;
   const isPageLoading = inventoryPagination?.isLoading ?? false;
-  const itemCount = isSearching ? filteredInventory.length : inventoryPagination?.totalItems ?? inventory.length;
+  const itemCount = inventoryPagination?.totalItems ?? filteredInventory.length;
 
-  const isVendorsRemotePagination = Boolean(vendorsPagination);
   const vendorsCurrentPage = vendorsPagination?.currentPage ?? localVendorsPage;
   const vendorsPageSize = vendorsPagination?.pageSize ?? localVendorsPageSize;
-  const vendorsHasNextPage = isSearching
-    ? false
-    : vendorsPagination?.hasNextPage ?? vendorsCurrentPage * vendorsPageSize < filteredVendors.length;
+  const vendorsHasNextPage = vendorsPagination?.hasNextPage ?? vendorsCurrentPage * vendorsPageSize < filteredVendors.length;
   const isVendorsLoading = vendorsPagination?.isLoading ?? false;
-  const vendorsCount = isSearching ? filteredVendors.length : vendorsPagination?.totalItems ?? vendors.length;
+  const vendorsCount = vendorsPagination?.totalItems ?? filteredVendors.length;
   const vehiclesCount = filteredVehicles.length;
 
   const displayedInventory = useMemo(() => {
@@ -176,7 +190,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
     if (activeTab === 'veiculos') {
       setLocalVehiclesPage(1);
     }
-  }, [activeTab, isSearching, searchTerm, inventoryPagination, vendorsPagination]);
+  }, [activeTab, isSearching, effectiveSearchTerm, inventoryPagination, vendorsPagination]);
 
   const handleInventoryPageChange = (page: number) => {
     const safePage = Math.max(1, page);
@@ -198,6 +212,22 @@ export const MasterData: React.FC<MasterDataProps> = ({
 
   const handleVehiclesPageChange = (page: number) => {
     setLocalVehiclesPage(Math.max(1, page));
+  };
+
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    if (activeTab === 'itens' && inventoryPagination) {
+      onInventorySearchChange?.(value);
+      inventoryPagination.onPageChange(1);
+      return;
+    }
+
+    if (activeTab === 'fornecedores' && vendorsPagination) {
+      onVendorsSearchChange?.(value);
+      vendorsPagination.onPageChange(1);
+      return;
+    }
   };
 
   const handleInventoryPageSizeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -521,8 +551,8 @@ export const MasterData: React.FC<MasterDataProps> = ({
       <div className="relative max-w-xl">
         <input
           type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          value={effectiveSearchTerm}
+          onChange={(e) => handleSearchChange(e.target.value)}
           placeholder={
             activeTab === 'itens'
               ? 'Buscar por SKU ou Nome do item...'
@@ -532,9 +562,9 @@ export const MasterData: React.FC<MasterDataProps> = ({
           }
           className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-700 dark:text-white focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
         />
-        {searchTerm && (
+        {effectiveSearchTerm && (
           <button
-            onClick={() => setSearchTerm('')}
+            onClick={() => handleSearchChange('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             aria-label="Limpar busca"
           >

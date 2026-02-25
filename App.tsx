@@ -553,6 +553,8 @@ export const App: React.FC = () => {
   const [masterDataItemsTotal, setMasterDataItemsTotal] = useState(0);
   const [isVendorsPageLoading, setIsVendorsPageLoading] = useState(false);
   const [vendorsTotal, setVendorsTotal] = useState(0);
+  const [masterDataItemsSearchTerm, setMasterDataItemsSearchTerm] = useState('');
+  const [vendorsSearchTerm, setVendorsSearchTerm] = useState('');
 
   const fullLoadInFlight = useRef<Set<string>>(new Set());
   const loadBootstrapDataRef = useRef<((warehouseId?: string) => Promise<void>) | null>(null);
@@ -1430,6 +1432,12 @@ export const App: React.FC = () => {
         .limit(pageLimit)
         .offset(offset);
 
+      const normalizedSearch = String(searchTerm || '').trim();
+      if (normalizedSearch) {
+        const isNumericSearch = /^\d+$/.test(normalizedSearch);
+        query = query.eq(isNumericSearch ? 'sku__ilike' : 'name__ilike', normalizedSearch);
+      }
+
       if (strategy === 'warehouse') {
         query = query.eq('warehouse_id', activeWarehouse);
       }
@@ -1459,8 +1467,14 @@ export const App: React.FC = () => {
           continue;
         }
 
-        // Escolhe sempre a estratégia com mais resultados para evitar escopo indevido.
-        if (rows.length >= selectedRows.length) {
+        // Mantem a primeira estratégia válida com dados para garantir consistência entre lista e contagem.
+        if (rows.length > 0 && selectedRows.length === 0) {
+          selectedRows = rows;
+          selectedStrategy = strategy;
+          break;
+        }
+
+        if (selectedRows.length === 0) {
           selectedRows = rows;
           selectedStrategy = strategy;
         }
@@ -1476,6 +1490,11 @@ export const App: React.FC = () => {
       let total = mapped.length;
       try {
         let countQuery = api.from('inventory/count');
+        const normalizedSearch = String(searchTerm || '').trim();
+        if (normalizedSearch) {
+          const isNumericSearch = /^\d+$/.test(normalizedSearch);
+          countQuery = countQuery.eq(isNumericSearch ? 'sku__ilike' : 'name__ilike', normalizedSearch);
+        }
         if (selectedStrategy === 'warehouse') {
           countQuery = countQuery.eq('warehouse_id', activeWarehouse);
         } else if (selectedStrategy === 'all') {
@@ -1484,7 +1503,7 @@ export const App: React.FC = () => {
 
         const countResponse = await countQuery.execute();
         const parsedTotal = Number((countResponse as any)?.data?.total || 0);
-        if (Number.isFinite(parsedTotal) && parsedTotal > 0) {
+        if (Number.isFinite(parsedTotal) && parsedTotal >= 0) {
           total = parsedTotal;
         }
       } catch (countError) {
@@ -1505,7 +1524,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const fetchVendorsPage = async (page: number) => {
+  const fetchVendorsPage = async (page: number, searchTerm = vendorsSearchTerm) => {
     if (!user) return;
 
     const safePage = Math.max(1, page);
@@ -1513,14 +1532,28 @@ export const App: React.FC = () => {
     setIsVendorsPageLoading(true);
 
     try {
+      const normalizedSearch = String(searchTerm || '').trim();
+      let countQuery = api.from('vendors/count');
+      let rowsQuery = api
+        .from('vendors')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(vendorsPageSize + 1)
+        .offset((safePage - 1) * vendorsPageSize);
+
+      if (normalizedSearch) {
+        const searchDigits = normalizedSearch.replace(/\D+/g, '');
+        if (searchDigits.length >= 4) {
+          countQuery = countQuery.eq('cnpj__ilike', searchDigits);
+          rowsQuery = rowsQuery.eq('cnpj__ilike', searchDigits);
+        } else {
+          countQuery = countQuery.eq('razao_social__ilike', normalizedSearch);
+          rowsQuery = rowsQuery.eq('razao_social__ilike', normalizedSearch);
+        }
+      }
       const [countResponse, rowsResponse] = await Promise.all([
-        api.from('vendors/count').execute(),
-        api
-          .from('vendors')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(vendorsPageSize + 1)
-          .offset((safePage - 1) * vendorsPageSize),
+        countQuery.execute(),
+        rowsQuery,
       ]);
 
       if (requestId !== pageFetchSequence.current.vendors) return;
@@ -1733,14 +1766,14 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (activeModule !== 'cadastro') return;
     if (!user) return;
-    void fetchMasterDataItemsPage(masterDataItemsPage);
-  }, [activeModule, user, activeWarehouse, masterDataItemsPage, masterDataItemsPageSize]);
+    void fetchMasterDataItemsPage(masterDataItemsPage, masterDataItemsSearchTerm);
+  }, [activeModule, user, activeWarehouse, masterDataItemsPage, masterDataItemsPageSize, masterDataItemsSearchTerm]);
 
   useEffect(() => {
     if (activeModule !== 'cadastro') return;
     if (!user) return;
-    void fetchVendorsPage(vendorsPage);
-  }, [activeModule, user, vendorsPage, vendorsPageSize]);
+    void fetchVendorsPage(vendorsPage, vendorsSearchTerm);
+  }, [activeModule, user, vendorsPage, vendorsPageSize, vendorsSearchTerm]);
 
   useEffect(() => {
     if (!user) return;
@@ -2421,7 +2454,7 @@ export const App: React.FC = () => {
     }
   };
 
-const handleUpdateSelectedQuote = async (poId: string, selectedQuoteId: string) => {
+  const handleUpdateSelectedQuote = async (poId: string, selectedQuoteId: string) => {
     const po = purchaseOrders.find((entry) => entry.id === poId);
     if (!po) return;
 
@@ -5068,6 +5101,16 @@ const handleUpdateSelectedQuote = async (poId: string, selectedQuoteId: string) 
                         setMasterDataItemsPageSize(nextSize);
                       },
                     }}
+                    onInventorySearchChange={(value) => {
+                      setMasterDataItemsSearchTerm(value);
+                      setMasterDataItemsPage(1);
+                    }}
+                    onVendorsSearchChange={(value) => {
+                      setVendorsSearchTerm(value);
+                      setVendorsPage(1);
+                    }}
+                    inventorySearchTerm={masterDataItemsSearchTerm}
+                    vendorsSearchTerm={vendorsSearchTerm}
                     vendorsPagination={{
                       currentPage: vendorsPage,
                       pageSize: vendorsPageSize,

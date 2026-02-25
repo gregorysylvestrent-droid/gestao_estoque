@@ -411,7 +411,7 @@ app.use(
         callback(null, true);
         return;
       }
-      
+
       callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
@@ -458,7 +458,20 @@ const isAllowedColumn = (table, column) => {
   return allowedColumns.includes(column);
 };
 
-const areColumnsAllowed = (table, columns) => columns.every((column) => isAllowedColumn(table, column));
+
+const parseFilterKey = (rawKey) => {
+  const [column, operator = 'eq'] = String(rawKey || '').split('__');
+  return {
+    column,
+    operator: operator || 'eq',
+  };
+};
+
+const areColumnsAllowed = (table, columns) =>
+  columns.every((rawColumn) => {
+    const { column } = parseFilterKey(rawColumn);
+    return isAllowedColumn(table, column);
+  });
 const quoteIdentifier = (identifier) => `"${String(identifier).replace(/"/g, '""')}"`;
 
 const toScalar = (value) => (Array.isArray(value) ? value[0] : value);
@@ -515,6 +528,33 @@ const parseOffset = (offsetValue) => {
   return parsed;
 };
 
+const buildSqlWhereFromFilters = (filters, startIndex = 1) => {
+  const clauses = [];
+  const values = [];
+  let markerIndex = startIndex;
+
+  for (const [rawColumn, rawValue] of Object.entries(filters)) {
+    const { column, operator } = parseFilterKey(rawColumn);
+    const marker = `$${markerIndex}`;
+
+    if (operator === 'ilike') {
+      clauses.push(`CAST(${quoteIdentifier(column)} AS TEXT) ILIKE ${marker}`);
+      values.push(`%${String(rawValue || '').trim()}%`);
+    } else {
+      clauses.push(`${quoteIdentifier(column)} = ${marker}`);
+      values.push(coerceValue(rawValue));
+    }
+
+    markerIndex += 1;
+  }
+
+  return {
+    clause: clauses.join(' AND '),
+    values,
+    nextIndex: markerIndex,
+  };
+};
+
 const parseDateFilter = (dateValue) => {
   if (!dateValue) return null;
   const parsed = new Date(String(dateValue));
@@ -531,6 +571,8 @@ const VENDOR_NOME_FANTASIA_MAX_LENGTH = 100;
 const INVENTORY_DESCRIPTION_MAX_LENGTH = 255;
 
 const normalizeDigits = (value) => String(value ?? '').replace(/\D+/g, '');
+const normalizeStockKeyToken = (value) => String(value ?? '').trim().toLowerCase();
+
 const normalizeWhitespace = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
 const normalizeVendorStatus = (value) =>
   String(value || '').toLowerCase() === 'bloqueado' ? 'Bloqueado' : 'Ativo';
@@ -811,9 +853,21 @@ const filterAuditLogRows = (rows, filters) => {
     return true;
   });
 };
+const normalizeFilterNeedle = (value) => String(value ?? '').trim().toLowerCase();
 
 const isRowMatch = (row, filters) =>
-  Object.entries(filters).every(([column, value]) => String(row[column]) === String(coerceValue(value)));
+  Object.entries(filters).every(([rawColumn, rawValue]) => {
+    const { column, operator } = parseFilterKey(rawColumn);
+    const rowValue = String(row?.[column] ?? '');
+
+    if (operator === 'ilike') {
+      const needle = normalizeFilterNeedle(rawValue).replace(/%/g, '');
+      if (!needle) return true;
+      return rowValue.toLowerCase().includes(needle);
+    }
+
+    return rowValue === String(coerceValue(rawValue));
+  });
 
 const applyFiltersToJsonRows = (rows, filters) => {
   if (Object.keys(filters).length === 0) return rows;
@@ -1506,9 +1560,9 @@ app.post('/login', async (req, res) => {
       const updatedUsers = usersRaw.map((row) =>
         row.id === user.id
           ? {
-              ...row,
-              password: hashPassword(String(password)),
-            }
+            ...row,
+            password: hashPassword(String(password)),
+          }
           : row
       );
       writeJson('users', updatedUsers);
@@ -1704,12 +1758,20 @@ app.post('/receipts/finalize', authenticate, async (req, res) => {
 
     const indexedInventory = new Map();
     inventory.forEach((item, index) => {
-      const key = `${String(item.sku)}::${String(item.warehouse_id || 'ARMZ28')}`;
-      indexedInventory.set(key, index);
+      const normalizedSku = normalizeStockKeyToken(item.sku);
+      const normalizedWarehouse = normalizeStockKeyToken(item.warehouse_id || 'ARMZ28');
+      indexedInventory.set(`${normalizedSku}::${normalizedWarehouse}`, index);
+      // Fallback para estoque central compartilhado entre armazens.
+      if (normalizedWarehouse === 'all') {
+        const fallbackKey = `${normalizedSku}::${normalizeStockKeyToken(targetWarehouseId)}`;
+        if (!indexedInventory.has(fallbackKey)) {
+          indexedInventory.set(fallbackKey, index);
+        }
+      }
     });
 
     const missingSkus = receiptItems
-      .filter((item) => !indexedInventory.has(`${item.sku}::${targetWarehouseId}`))
+      .filter((item) => !indexedInventory.has(`${normalizeStockKeyToken(item.sku)}::${normalizeStockKeyToken(targetWarehouseId)}`))
       .map((item) => item.sku);
 
     if (missingSkus.length > 0) {
@@ -1724,7 +1786,7 @@ app.post('/receipts/finalize', authenticate, async (req, res) => {
     const newMovements = [];
 
     receiptItems.forEach((item, index) => {
-      const mapKey = `${item.sku}::${targetWarehouseId}`;
+      const mapKey = `${normalizeStockKeyToken(item.sku)}::${normalizeStockKeyToken(targetWarehouseId)}`;
       const inventoryIndex = indexedInventory.get(mapKey);
       const currentInventory = inventory[inventoryIndex];
       const previousQty = Number(currentInventory.quantity || 0);
@@ -1844,16 +1906,30 @@ app.post('/receipts/finalize', authenticate, async (req, res) => {
 
     for (let index = 0; index < receiptItems.length; index += 1) {
       const item = receiptItems[index];
-      const inventoryUpdate = await client.query(
+      let inventoryUpdate = await client.query(
         `
           UPDATE inventory
              SET quantity = quantity + $1
            WHERE sku = $2
+           WHERE TRIM(CAST(sku AS TEXT)) = TRIM(CAST($2 AS TEXT))
              AND warehouse_id = $3
          RETURNING *
         `,
         [item.received, item.sku, targetWarehouseId]
       );
+
+      if (inventoryUpdate.rows.length === 0) {
+        inventoryUpdate = await client.query(
+          `
+            UPDATE inventory
+               SET quantity = quantity + $1
+             WHERE TRIM(CAST(sku AS TEXT)) = TRIM(CAST($2 AS TEXT))
+               AND LOWER(TRIM(CAST(warehouse_id AS TEXT))) = 'all'
+           RETURNING *
+          `,
+          [item.received, item.sku]
+        );
+      }
 
       if (inventoryUpdate.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -2259,12 +2335,9 @@ app.get('/:table/count', authenticate, async (req, res) => {
 
     const filterEntries = Object.entries(filters);
     if (filterEntries.length > 0) {
-      const whereClause = filterEntries
-        .map(([column], index) => `${quoteIdentifier(column)} = $${index + 1}`)
-        .join(' AND ');
-
-      query += ` WHERE ${whereClause}`;
-      values.push(...filterEntries.map(([, value]) => coerceValue(value)));
+      const whereFilter = buildSqlWhereFromFilters(filters);
+      query += ` WHERE ${whereFilter.clause}`;
+      values.push(...whereFilter.values);
     }
 
     const result = await pool.query(query, values);
@@ -2406,12 +2479,9 @@ app.get('/:table', authenticate, async (req, res) => {
 
     const filterEntries = Object.entries(filters);
     if (filterEntries.length > 0) {
-      const whereClause = filterEntries
-        .map(([column], index) => `${quoteIdentifier(column)} = $${index + 1}`)
-        .join(' AND ');
-
-      query += ` WHERE ${whereClause}`;
-      values.push(...filterEntries.map(([, value]) => coerceValue(value)));
+      const whereFilter = buildSqlWhereFromFilters(filters);
+      query += ` WHERE ${whereFilter.clause}`;
+      values.push(...whereFilter.values);
     }
 
     if (order) {
@@ -3349,4 +3419,3 @@ wss.on('connection', (socket, req) => {
     wsClients.delete(socket);
   });
 });
-
