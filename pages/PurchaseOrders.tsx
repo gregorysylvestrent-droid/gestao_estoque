@@ -438,6 +438,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   const [quote5Search, setQuote5Search] = useState('');
   const [isQuote5SearchOpen, setIsQuote5SearchOpen] = useState(false);
   const [selectedQuoteId, setSelectedQuoteId] = useState('');
+  const [selectedQuoteIdByItem, setSelectedQuoteIdByItem] = useState<Record<string, string>>({});
 
   // Quotation Form State (por item e por slot)
   const [itemQuoteForms, setItemQuoteForms] = useState<Record<string, ItemQuoteForm[]>>({});
@@ -830,6 +831,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     setQuotationMode('edit');
     initializeItemQuoteState(order);
     setSelectedQuoteId('');
+    setSelectedQuoteIdByItem({});
     setIsQuotationModalOpen(true);
   };
 
@@ -837,7 +839,16 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     setQuotingPO(order);
     setQuotationMode('analyze');
     initializeItemQuoteState(order);
-    setSelectedQuoteId(order.selectedQuoteId || getRecommendedQuoteId(order));
+
+    const fallbackSelectedQuoteId = order.selectedQuoteId || getRecommendedQuoteId(order);
+    setSelectedQuoteId(fallbackSelectedQuoteId);
+
+    const selectedByItem = order.items.reduce<Record<string, string>>((acc, item) => {
+      acc[item.sku] = fallbackSelectedQuoteId || getRecommendedQuoteIdByItem(order, item.sku);
+      return acc;
+    }, {});
+    setSelectedQuoteIdByItem(selectedByItem);
+
     setIsQuotationModalOpen(true);
   };
 
@@ -846,6 +857,32 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       const quotedItem = quote.items?.find((entry) => entry.sku === item.sku);
       return quotedItem && Number(quotedItem.unitPrice) > 0;
     });
+
+  const quoteCoversOrderItem = (quote: Quote, sku: string) => {
+    const quotedItem = quote.items?.find((entry) => entry.sku === sku);
+    return Boolean(quotedItem && Number(quotedItem.unitPrice) > 0);
+  };
+
+  const getRecommendedQuoteIdByItem = (order: PurchaseOrder, sku: string) => {
+    const orderQuotes = order.quotes || [];
+    if (orderQuotes.length === 0) return '';
+
+    const comparableQuotes = orderQuotes.filter((quote) => quoteCoversOrderItem(quote, sku));
+    const source = comparableQuotes.length > 0 ? comparableQuotes : orderQuotes;
+
+    const bestQuote = source.reduce((prev, curr) => {
+      const prevItemTotal = getQuoteItemTotalBySku(order, prev, sku);
+      const currItemTotal = getQuoteItemTotalBySku(order, curr, sku);
+
+      if (currItemTotal === prevItemTotal) {
+        return curr.totalValue < prev.totalValue ? curr : prev;
+      }
+
+      return currItemTotal < prevItemTotal ? curr : prev;
+    });
+
+    return bestQuote.id;
+  };
 
   const getRecommendedQuoteId = (order: PurchaseOrder) => {
     const orderQuotes = order.quotes || [];
@@ -966,6 +1003,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     setItemVendorSearch({});
     setItemVendorSearchOpen({});
     setSelectedQuoteId('');
+    setSelectedQuoteIdByItem({});
   };
 
   const handleSendQuotationToApproval = (order: PurchaseOrder) => {
@@ -1614,9 +1652,10 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       <div className="px-10 pb-10 pt-4 space-y-8">
         {quotingPO.items.map((item, itemIndex) => {
           const visibleSlots = Math.max(1, Math.min(5, itemVisibleQuoteForms[item.sku] ?? 1));
-          const recommendedQuoteId = getRecommendedQuoteId(quotingPO);
-          const selectedQuoteSlot = selectedQuoteId
-            ? (quotingPO.quotes || []).findIndex((quote) => quote.id === selectedQuoteId)
+          const recommendedQuoteId = getRecommendedQuoteIdByItem(quotingPO, item.sku);
+          const selectedQuoteForItem = selectedQuoteIdByItem[item.sku] || selectedQuoteId;
+          const selectedQuoteSlot = selectedQuoteForItem
+            ? (quotingPO.quotes || []).findIndex((quote) => quote.id === selectedQuoteForItem)
             : -1;
           const suggestedQuoteSlot = recommendedQuoteId
             ? (quotingPO.quotes || []).findIndex((quote) => quote.id === recommendedQuoteId)
@@ -1696,7 +1735,10 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                           {quotationMode === 'analyze' && quotingPO?.quotes?.[slotIndex]?.id && (
                             <button
                               type="button"
-                              onClick={() => setSelectedQuoteId(String(quotingPO.quotes?.[slotIndex]?.id || ''))}
+                              onClick={() => {
+                                const nextSelectedQuoteId = String(quotingPO.quotes?.[slotIndex]?.id || '');
+                                setSelectedQuoteIdByItem((prev) => ({ ...prev, [item.sku]: nextSelectedQuoteId }));
+                              }}
                               className={`px-3 py-1 text-[9px] font-black rounded-lg uppercase tracking-widest border transition-all ${isManuallySelected
                                 ? 'bg-emerald-50 text-emerald-600 border-emerald-300'
                                 : 'bg-white/80 text-slate-500 border-slate-300 hover:border-emerald-300 hover:text-emerald-600'}`}
@@ -2507,9 +2549,20 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                     </button>
                     <button
                       onClick={async () => {
-                        if (selectedQuoteId && selectedQuoteId !== quotingPO.selectedQuoteId) {
-                          await onUpdateSelectedQuote(quotingPO.id, selectedQuoteId);
+                        const selectedQuoteIds = quotingPO.items
+                          .map((item) => selectedQuoteIdByItem[item.sku])
+                          .filter(Boolean);
+                        const uniqueSelectedQuoteIds = Array.from(new Set(selectedQuoteIds));
+
+                        if (uniqueSelectedQuoteIds.length === 1) {
+                          const selectedQuoteIdForOrder = uniqueSelectedQuoteIds[0];
+                          if (selectedQuoteIdForOrder && selectedQuoteIdForOrder !== quotingPO.selectedQuoteId) {
+                            await onUpdateSelectedQuote(quotingPO.id, selectedQuoteIdForOrder);
+                          }
+                        } else if (uniqueSelectedQuoteIds.length > 1) {
+                          alert('Seleção independente por item aplicada na análise. Para atualizar a cotação global do pedido, selecione a mesma cotação em todos os itens.');
                         }
+
                         onApprove(quotingPO.id);
                         setIsQuotationModalOpen(false);
                         resetQuotationForm();
