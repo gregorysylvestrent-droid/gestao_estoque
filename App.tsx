@@ -2395,10 +2395,13 @@ export const App: React.FC = () => {
     if (!error) {
       setPurchaseOrders(prev => prev.map(o =>
         o.id === poId ? { ...o, quotes, quotesAddedAt, approvalHistory: newApprovalHistory } : o
+        o.id === poId ? { ...o, quotes, quotesAddedAt, approvalHistory: newApprovalHistory } : o
       ));
       setPagedPurchaseOrders(prev => prev.map(o =>
         o.id === poId ? { ...o, quotes, quotesAddedAt, approvalHistory: newApprovalHistory } : o
+        o.id === poId ? { ...o, quotes, quotesAddedAt, approvalHistory: newApprovalHistory } : o
       ));
+      showNotification(`Cotações salvas no pedido ${poId}`, 'success');
       showNotification(`Cotações salvas no pedido ${poId}`, 'success');
     }
   };
@@ -2422,7 +2425,7 @@ export const App: React.FC = () => {
       };
     });
 
-    const updatedQuotes = effectiveQuotes.map(q => ({ ...q, isSelected: q.id === selectedQuoteId }));
+    const updatedQuotes = po.quotes?.map(q => ({ ...q, isSelected: q.id === selectedQuoteId }));
     const newApprovalHistory = appendPOHistory(
       po.approvalHistory,
       createPOStatusHistoryEntry('pendente', 'Pedido enviado para aprovação do gestor')
@@ -2434,7 +2437,6 @@ export const App: React.FC = () => {
       total: selectedQuote.totalValue,
       status: 'pendente',
       items: adjustedItems,
-      quotes: updatedQuotes,
       approval_history: newApprovalHistory
     });
 
@@ -2446,6 +2448,7 @@ export const App: React.FC = () => {
         total: selectedQuote.totalValue,
         status: 'pendente' as const,
         items: adjustedItems,
+        items: adjustedItems,
         quotes: updatedQuotes,
         approvalHistory: newApprovalHistory
       } : o));
@@ -2456,6 +2459,7 @@ export const App: React.FC = () => {
         total: selectedQuote.totalValue,
         status: 'pendente' as const,
         quotes: updatedQuotes,
+        items: adjustedItems,
         items: adjustedItems,
         approvalHistory: newApprovalHistory
       } : o));
