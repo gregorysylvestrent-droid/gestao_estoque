@@ -2425,7 +2425,7 @@ export const App: React.FC = () => {
       };
     });
 
-    const updatedQuotes = po.quotes?.map(q => ({ ...q, isSelected: q.id === selectedQuoteId }));
+    const updatedQuotes = effectiveQuotes.map(q => ({ ...q, isSelected: q.id === selectedQuoteId }));
     const newApprovalHistory = appendPOHistory(
       po.approvalHistory,
       createPOStatusHistoryEntry('pendente', 'Pedido enviado para aprovação do gestor')
@@ -2437,6 +2437,7 @@ export const App: React.FC = () => {
       total: selectedQuote.totalValue,
       status: 'pendente',
       items: adjustedItems,
+      quotes: updatedQuotes,
       approval_history: newApprovalHistory
     });
 
