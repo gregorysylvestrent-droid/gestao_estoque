@@ -2383,7 +2383,7 @@ export const App: React.FC = () => {
     const quotesAddedAt = toPtBrDateTime(quotesAddedAtIso, formatDateTimePtBR(new Date(), ''));
     const newApprovalHistory = appendPOHistory(
       po.approvalHistory,
-      createPOStatusHistoryEntry('cotacao', 'Cotação de fornecedores vinculada')
+      createPOStatusHistoryEntry(po.status, 'Cotações salvas no pedido')
     );
     const { error } = await api.from('purchase_orders').eq('id', poId).update({
       quotes,
@@ -2394,23 +2394,27 @@ export const App: React.FC = () => {
 
     if (!error) {
       setPurchaseOrders(prev => prev.map(o =>
-        o.id === poId ? { ...o, quotes, status: 'cotacao' as const, quotesAddedAt, approvalHistory: newApprovalHistory } : o
+        o.id === poId ? { ...o, quotes, quotesAddedAt, approvalHistory: newApprovalHistory } : o
       ));
       setPagedPurchaseOrders(prev => prev.map(o =>
-        o.id === poId ? { ...o, quotes, status: 'cotacao' as const, quotesAddedAt, approvalHistory: newApprovalHistory } : o
+        o.id === poId ? { ...o, quotes, quotesAddedAt, approvalHistory: newApprovalHistory } : o
       ));
-      showNotification(`Cotações adicionadas ao pedido ${poId}`, 'success');
+      showNotification(`Cotações salvas no pedido ${poId}`, 'success');
     }
   };
 
-  const handleSendToApproval = async (poId: string, selectedQuoteId: string) => {
+  const handleSendToApproval = async (poId: string, selectedQuoteId: string, quotesOverride?: Quote[]) => {
     const po = purchaseOrders.find(o => o.id === poId);
     if (!po) return;
 
-    const selectedQuote = po.quotes?.find(q => q.id === selectedQuoteId);
+    const effectiveQuotes = Array.isArray(quotesOverride) && quotesOverride.length > 0
+      ? quotesOverride
+      : (po.quotes || []);
+
+    const selectedQuote = effectiveQuotes.find(q => q.id === selectedQuoteId);
     if (!selectedQuote) return;
 
-        const adjustedItems = po.items.map((item) => {
+    const adjustedItems = po.items.map((item) => {
       const quotedItem = selectedQuote.items?.find((quoteItem) => quoteItem.sku === item.sku);
       return {
         ...item,
@@ -2418,7 +2422,7 @@ export const App: React.FC = () => {
       };
     });
 
-    const updatedQuotes = po.quotes?.map(q => ({ ...q, isSelected: q.id === selectedQuoteId }));
+    const updatedQuotes = effectiveQuotes.map(q => ({ ...q, isSelected: q.id === selectedQuoteId }));
     const newApprovalHistory = appendPOHistory(
       po.approvalHistory,
       createPOStatusHistoryEntry('pendente', 'Pedido enviado para aprovação do gestor')
@@ -2430,6 +2434,7 @@ export const App: React.FC = () => {
       total: selectedQuote.totalValue,
       status: 'pendente',
       items: adjustedItems,
+      quotes: updatedQuotes,
       approval_history: newApprovalHistory
     });
 
