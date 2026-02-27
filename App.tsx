@@ -3423,7 +3423,7 @@ export const App: React.FC = () => {
           showNotification(`Erro ao atualizar fornecedor: ${resolveApiErrorMessage(error)}`, 'error');
         }
       } else {
-        const newVendor: Vendor = {
+        const fallbackVendor: Vendor = {
           id: String(data?.id || Date.now().toString()),
           razaoSocial,
           nomeFantasia,
@@ -3435,10 +3435,22 @@ export const App: React.FC = () => {
           email: String(data?.email || ''),
           status: normalizedStatus,
         };
-        const { data: insertedData, error } = await api.from('vendors').insert(newVendor);
+        const newVendorPayload = {
+          id: fallbackVendor.id,
+          razao_social: razaoSocial,
+          nome_fantasia: nomeFantasia,
+          cnpj,
+          telefone,
+          name: razaoSocial,
+          category: String(data?.category || ''),
+          contact: telefone || nomeFantasia,
+          email: String(data?.email || ''),
+          status: normalizedStatus,
+        };
+        const { data: insertedData, error } = await api.from('vendors').insert(newVendorPayload);
         if (!error) {
           const insertedRow = Array.isArray(insertedData) ? insertedData[0] : insertedData;
-          const mappedInserted = insertedRow ? mapVendorRows([insertedRow])[0] : newVendor;
+          const mappedInserted = insertedRow ? mapVendorRows([insertedRow])[0] : fallbackVendor;
           setVendors(prev => [mappedInserted, ...prev.filter((vendor) => vendor.id !== mappedInserted.id)]);
           if (activeModule === 'cadastro') {
             setVendorsPage(1);

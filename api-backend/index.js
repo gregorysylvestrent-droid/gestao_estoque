@@ -3109,6 +3109,18 @@ app.patch('/:table', authenticate, async (req, res) => {
     return;
   }
 
+  if (table === 'vendors') {
+    const filterKeys = Object.keys(filters);
+    const hasOnlyIdFilter = filterKeys.length === 1 && filterKeys[0] === 'id';
+    if (!hasOnlyIdFilter || !String(filters.id || '').trim()) {
+      res.status(400).json({
+        data: null,
+        error: 'Atualizacao de fornecedor exige filtro exclusivo por id',
+      });
+      return;
+    }
+  }
+
   if (!dbConnected) {
     const currentData = readJson(table);
     const updatedRows = [];
