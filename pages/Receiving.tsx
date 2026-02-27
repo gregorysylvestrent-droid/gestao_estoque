@@ -127,8 +127,6 @@ export const Receiving: React.FC<ReceivingProps> = ({ onFinalize, availablePOs }
 
   const isComplete = items.every(i => i.received > 0);
   const normalizeText = (value: string) => value.trim().toLowerCase();
-  const buildPoLabel = (po: PurchaseOrder) => `${po.id} - ${po.vendor} (${po.items.length} itens)`;
-
   const filteredPOs = availablePOs.filter((po) => {
     const normalizedTerm = normalizeText(poSearchTerm);
     if (!normalizedTerm) return true;
@@ -146,38 +144,6 @@ export const Receiving: React.FC<ReceivingProps> = ({ onFinalize, availablePOs }
     return normalizeText(searchableText).includes(normalizedTerm);
   });
 
-  useEffect(() => {
-    if (!selectedPO) {
-      setPoSearchTerm('');
-      return;
-    }
-
-    const selectedOrder = availablePOs.find((po) => po.id === selectedPO);
-    if (selectedOrder) {
-      setPoSearchTerm(buildPoLabel(selectedOrder));
-    }
-  }, [selectedPO, availablePOs]);
-
-  const handlePoSearchChange = (value: string) => {
-    setPoSearchTerm(value);
-
-    const normalizedValue = normalizeText(value);
-    if (!normalizedValue) {
-      setSelectedPO('');
-      return;
-    }
-
-    const exactMatch = availablePOs.find((po) => normalizeText(po.id) === normalizedValue);
-    if (exactMatch) {
-      setSelectedPO(exactMatch.id);
-      return;
-    }
-
-    const labelMatch = availablePOs.find((po) => normalizeText(buildPoLabel(po)) === normalizedValue);
-    if (labelMatch) {
-      setSelectedPO(labelMatch.id);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -243,19 +209,25 @@ export const Receiving: React.FC<ReceivingProps> = ({ onFinalize, availablePOs }
               <input
                 list="receiving-po-options"
                 value={poSearchTerm}
-                onChange={(e) => handlePoSearchChange(e.target.value)}
+                onChange={(e) => setPoSearchTerm(e.target.value)}
                 disabled={isFinalizing}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-0 rounded-xl font-bold text-sm transition-all"
-                placeholder="Digite para buscar e selecionar um PO..."
+                className="w-full px-4 py-3 mb-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-0 rounded-xl font-bold text-sm transition-all"
+                placeholder="Digite para filtrar pedidos..."
                 type="text"
               />
-              <datalist id="receiving-po-options">
+              <select
+                value={selectedPO}
+                onChange={(e) => setSelectedPO(e.target.value)}
+                disabled={isFinalizing}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-0 rounded-xl font-black text-sm transition-all"
+              >
+                <option value="">Escolha um PO enviado...</option>
                 {filteredPOs.map((po) => (
                   <option key={po.id} value={po.id}>
-                    {buildPoLabel(po)}
+                    {po.id} - {po.vendor} ({po.items.length} itens)
                   </option>
                 ))}
-              </datalist>
+              </select>
               {normalizeText(poSearchTerm) && filteredPOs.length === 0 && (
                 <p className="text-xs text-slate-500 font-bold mt-2">
                   Nenhum pedido encontrado para "{poSearchTerm}".

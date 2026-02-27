@@ -1770,54 +1770,56 @@ app.post('/receipts/finalize', authenticate, async (req, res) => {
       }
     });
 
-    const missingSkus = receiptItems
-      .filter((item) => !indexedInventory.has(`${normalizeStockKeyToken(item.sku)}::${normalizeStockKeyToken(targetWarehouseId)}`))
-      .map((item) => item.sku);
-
-    if (missingSkus.length > 0) {
-      res.status(400).json({
-        data: null,
-        error: `Itens nao encontrados no estoque do armazem ${targetWarehouseId}: ${missingSkus.join(', ')}`,
-      });
-      return;
-    }
-
     const inventoryUpdates = [];
     const newMovements = [];
 
-    receiptItems.forEach((item, index) => {
-      const mapKey = `${normalizeStockKeyToken(item.sku)}::${normalizeStockKeyToken(targetWarehouseId)}`;
-      const inventoryIndex = indexedInventory.get(mapKey);
-      const currentInventory = inventory[inventoryIndex];
-      const previousQty = Number(currentInventory.quantity || 0);
-      const nextQty = previousQty + item.received;
+    try {
+      receiptItems.forEach((item, index) => {
+        const normalizedSku = normalizeStockKeyToken(item.sku);
+        const warehouseKey = normalizeStockKeyToken(targetWarehouseId);
+        const mapKey = `${normalizedSku}::${warehouseKey}`;
+        const inventoryIndex = indexedInventory.has(mapKey)
+          ? indexedInventory.get(mapKey)
+          : inventory.findIndex((entry) => normalizeStockKeyToken(entry.sku) === normalizedSku);
 
-      inventory[inventoryIndex] = {
-        ...currentInventory,
-        quantity: nextQty,
-      };
+        if (inventoryIndex < 0) {
+          throw new Error(`Item ${item.sku} nao encontrado no estoque do armazem ${targetWarehouseId}`);
+        }
 
-      inventoryUpdates.push({
-        sku: item.sku,
-        previous_qty: previousQty,
-        received: item.received,
-        new_qty: nextQty,
+        const currentInventory = inventory[inventoryIndex];
+        const previousQty = Number(currentInventory.quantity || 0);
+        const nextQty = previousQty + item.received;
+
+        inventory[inventoryIndex] = {
+          ...currentInventory,
+          quantity: nextQty,
+        };
+
+        inventoryUpdates.push({
+          sku: item.sku,
+          previous_qty: previousQty,
+          received: item.received,
+          new_qty: nextQty,
+        });
+
+        newMovements.push({
+          id: buildReceiptMovementId(poId, index + 1),
+          sku: item.sku,
+          product_name: currentInventory.name || item.sku,
+          type: 'entrada',
+          quantity: item.received,
+          timestamp: receivedAtIso,
+          user: receiptUser,
+          location: currentInventory.location || 'DOCA-01',
+          reason: receiptReason,
+          order_id: poId,
+          warehouse_id: targetWarehouseId,
+        });
       });
-
-      newMovements.push({
-        id: buildReceiptMovementId(poId, index + 1),
-        sku: item.sku,
-        product_name: currentInventory.name || item.sku,
-        type: 'entrada',
-        quantity: item.received,
-        timestamp: receivedAtIso,
-        user: receiptUser,
-        location: currentInventory.location || 'DOCA-01',
-        reason: receiptReason,
-        order_id: poId,
-        warehouse_id: targetWarehouseId,
-      });
-    });
+    } catch (error) {
+      res.status(400).json({ data: null, error: String(error?.message || 'Falha ao processar recebimento') });
+      return;
+    }
 
     const updatedPo = {
       ...targetPo,
@@ -1910,7 +1912,7 @@ app.post('/receipts/finalize', authenticate, async (req, res) => {
         `
           UPDATE inventory
              SET quantity = quantity + $1
-           WHERE TRIM(CAST(sku AS TEXT)) = TRIM(CAST($2 AS TEXT))
+           WHERE LOWER(TRIM(CAST(sku AS TEXT))) = LOWER(TRIM(CAST($2 AS TEXT)))
              AND LOWER(TRIM(CAST(warehouse_id AS TEXT))) = LOWER(TRIM(CAST($3 AS TEXT)))
          RETURNING *
         `,
@@ -1922,8 +1924,20 @@ app.post('/receipts/finalize', authenticate, async (req, res) => {
           `
             UPDATE inventory
                SET quantity = quantity + $1
-             WHERE TRIM(CAST(sku AS TEXT)) = TRIM(CAST($2 AS TEXT))
+             WHERE LOWER(TRIM(CAST(sku AS TEXT))) = LOWER(TRIM(CAST($2 AS TEXT)))
                AND LOWER(TRIM(CAST(warehouse_id AS TEXT))) = 'all'
+           RETURNING *
+          `,
+          [item.received, item.sku]
+        );
+      }
+
+      if (inventoryUpdate.rows.length === 0) {
+        inventoryUpdate = await client.query(
+          `
+            UPDATE inventory
+               SET quantity = quantity + $1
+             WHERE LOWER(TRIM(CAST(sku AS TEXT))) = LOWER(TRIM(CAST($2 AS TEXT)))
            RETURNING *
           `,
           [item.received, item.sku]
