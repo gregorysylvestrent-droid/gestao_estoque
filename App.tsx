@@ -63,6 +63,54 @@ const STORAGE_KEYS = {
   PURCHASE_ORDERS: 'logiwms_purchase_orders',
   NOTIFICATIONS: 'logiwms_notifications',
   ACTIVITIES: 'logiwms_activities',
+  LAST_SYSTEM_MODULE: 'logiwms_last_system_module',
+  LAST_WAREHOUSE_MODULE: 'logiwms_last_warehouse_module',
+  LAST_WORKSHOP_MODULE: 'logiwms_last_workshop_module',
+};
+
+const WAREHOUSE_MODULES: Module[] = [
+  'dashboard',
+  'recebimento',
+  'movimentacoes',
+  'auditoria_geral',
+  'estoque',
+  'expedicao',
+  'inventario_ciclico',
+  'compras',
+  'gestao_compras',
+  'cadastro',
+  'relatorios',
+  'configuracoes',
+];
+
+const WORKSHOP_MODULES = [
+  'dashboard',
+  'panel',
+  'orders',
+  'mechanics',
+  'preventive',
+  'vehicles',
+  'plans',
+  'schedules',
+  'checklists',
+  'productivity',
+] as const;
+
+type WorkshopModule = (typeof WORKSHOP_MODULES)[number];
+
+const readStoredSystemModule = (): SystemModule | null => {
+  const raw = loadFromStorage(STORAGE_KEYS.LAST_SYSTEM_MODULE, null);
+  return raw === 'warehouse' || raw === 'workshop' || raw === 'fleet' ? raw : null;
+};
+
+const readStoredWarehouseModule = (): Module => {
+  const raw = loadFromStorage(STORAGE_KEYS.LAST_WAREHOUSE_MODULE, 'dashboard');
+  return WAREHOUSE_MODULES.includes(raw) ? raw : 'dashboard';
+};
+
+const readStoredWorkshopModule = (): WorkshopModule => {
+  const raw = loadFromStorage(STORAGE_KEYS.LAST_WORKSHOP_MODULE, 'dashboard');
+  return WORKSHOP_MODULES.includes(raw) ? raw : 'dashboard';
 };
 
 const saveToStorage = (key: string, data: any) => {
@@ -120,7 +168,7 @@ class WorkshopErrorBoundary extends React.Component<
 
 export const App: React.FC = () => {
 
-  const [activeModule, setActiveModule] = useState<Module>('dashboard');
+  const [activeModule, setActiveModule] = useState<Module>(() => readStoredWarehouseModule());
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -141,8 +189,8 @@ export const App: React.FC = () => {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // System Module Selection (Warehouse vs Workshop)
-  const [currentSystemModule, setCurrentSystemModule] = useState<SystemModule | null>(null);
-  const [workshopActiveModule, setWorkshopActiveModule] = useState<'dashboard' | 'panel' | 'orders' | 'mechanics' | 'preventive' | 'vehicles' | 'plans' | 'schedules' | 'checklists' | 'productivity'>('dashboard');
+  const [currentSystemModule, setCurrentSystemModule] = useState<SystemModule | null>(() => readStoredSystemModule());
+  const [workshopActiveModule, setWorkshopActiveModule] = useState<WorkshopModule>(() => readStoredWorkshopModule());
 
   // Workshop States
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -1689,6 +1737,12 @@ export const App: React.FC = () => {
         if (savedUser && savedToken) {
           const parsedUser = JSON.parse(savedUser);
           handleLogin(parsedUser, undefined, false);
+
+          const lastSystemModule = readStoredSystemModule();
+          if (lastSystemModule === 'workshop') {
+            await loadWorkshopData();
+            await flushWorkshopQueue();
+          }
         }
       } catch (e) {
         console.error('Session recovery failed', e);
@@ -1736,6 +1790,25 @@ export const App: React.FC = () => {
     // Compras usa lista completa em memoria para permitir busca global sem trocar de pagina.
     // Mantemos currentPage apenas para paginacao client-side na tela.
   }, [activeModule, user, activeWarehouse, purchaseOrdersPage]);
+
+  useEffect(() => {
+    if (!user) return;
+    saveToStorage(STORAGE_KEYS.LAST_WAREHOUSE_MODULE, activeModule);
+  }, [activeModule, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    saveToStorage(STORAGE_KEYS.LAST_WORKSHOP_MODULE, workshopActiveModule);
+  }, [workshopActiveModule, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (currentSystemModule === null) {
+      localStorage.removeItem(STORAGE_KEYS.LAST_SYSTEM_MODULE);
+      return;
+    }
+    saveToStorage(STORAGE_KEYS.LAST_SYSTEM_MODULE, currentSystemModule);
+  }, [currentSystemModule, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -2387,7 +2460,6 @@ export const App: React.FC = () => {
     );
     const { error } = await api.from('purchase_orders').eq('id', poId).update({
       quotes,
-      status: 'cotacao',
       quotes_added_at: quotesAddedAtIso,
       approval_history: newApprovalHistory
     });
@@ -3795,16 +3867,41 @@ export const App: React.FC = () => {
 
     if (registerActivity) {
       addActivity('alerta', 'Login Realizado', `Usuário ${normalizedUser.name} acessou o sistema`);
+      // Em login manual, exibimos o seletor de módulos.
+      setCurrentSystemModule(null);
+      return;
     }
 
-    // Mostrar ModuleSelector após login (em vez de carregar dados direto)
-    setCurrentSystemModule(null);
+    const lastSystemModule = readStoredSystemModule();
+
+    if (
+      lastSystemModule === 'workshop' &&
+      normalizedUser.role !== 'admin' &&
+      !normalizedUser.hasWorkshopAccess
+    ) {
+      setCurrentSystemModule(null);
+      return;
+    }
+
+    if (
+      lastSystemModule === 'fleet' &&
+      normalizedUser.role !== 'admin' &&
+      !normalizedUser.hasFleetAccess
+    ) {
+      setCurrentSystemModule(null);
+      return;
+    }
+
+    setCurrentSystemModule(lastSystemModule);
   };
 
   // Update logout to also reset system module
   const logout = () => {
     api.clearAuthToken();
     localStorage.removeItem('logged_user');
+    localStorage.removeItem(STORAGE_KEYS.LAST_SYSTEM_MODULE);
+    localStorage.removeItem(STORAGE_KEYS.LAST_WAREHOUSE_MODULE);
+    localStorage.removeItem(STORAGE_KEYS.LAST_WORKSHOP_MODULE);
     pageFetchSequence.current.movements += 1;
     pageFetchSequence.current.purchaseOrders += 1;
     pageFetchSequence.current.materialRequests += 1;
