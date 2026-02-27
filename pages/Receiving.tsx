@@ -20,6 +20,7 @@ interface ReceivingProps {
 
 export const Receiving: React.FC<ReceivingProps> = ({ onFinalize, availablePOs }) => {
   const [selectedPO, setSelectedPO] = useState<string>('');
+  const [poSearchTerm, setPoSearchTerm] = useState('');
   const [items, setItems] = useState<ReceivingItem[]>([]);
   const [barcode, setBarcode] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -125,6 +126,58 @@ export const Receiving: React.FC<ReceivingProps> = ({ onFinalize, availablePOs }
   };
 
   const isComplete = items.every(i => i.received > 0);
+  const normalizeText = (value: string) => value.trim().toLowerCase();
+  const buildPoLabel = (po: PurchaseOrder) => `${po.id} - ${po.vendor} (${po.items.length} itens)`;
+
+  const filteredPOs = availablePOs.filter((po) => {
+    const normalizedTerm = normalizeText(poSearchTerm);
+    if (!normalizedTerm) return true;
+
+    const searchableText = [
+      po.id,
+      po.vendor,
+      po.plate,
+      po.costCenter,
+      ...po.items.map((item) => `${item.sku} ${item.name}`),
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    return normalizeText(searchableText).includes(normalizedTerm);
+  });
+
+  useEffect(() => {
+    if (!selectedPO) {
+      setPoSearchTerm('');
+      return;
+    }
+
+    const selectedOrder = availablePOs.find((po) => po.id === selectedPO);
+    if (selectedOrder) {
+      setPoSearchTerm(buildPoLabel(selectedOrder));
+    }
+  }, [selectedPO, availablePOs]);
+
+  const handlePoSearchChange = (value: string) => {
+    setPoSearchTerm(value);
+
+    const normalizedValue = normalizeText(value);
+    if (!normalizedValue) {
+      setSelectedPO('');
+      return;
+    }
+
+    const exactMatch = availablePOs.find((po) => normalizeText(po.id) === normalizedValue);
+    if (exactMatch) {
+      setSelectedPO(exactMatch.id);
+      return;
+    }
+
+    const labelMatch = availablePOs.find((po) => normalizeText(buildPoLabel(po)) === normalizedValue);
+    if (labelMatch) {
+      setSelectedPO(labelMatch.id);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -187,19 +240,27 @@ export const Receiving: React.FC<ReceivingProps> = ({ onFinalize, availablePOs }
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">
                 Selecionar Pedido de Compra
               </label>
-              <select
-                value={selectedPO}
-                onChange={(e) => setSelectedPO(e.target.value)}
+              <input
+                list="receiving-po-options"
+                value={poSearchTerm}
+                onChange={(e) => handlePoSearchChange(e.target.value)}
                 disabled={isFinalizing}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-0 rounded-xl font-black text-sm transition-all"
-              >
-                <option value="">Escolha um PO enviado...</option>
-                {availablePOs.map(po => (
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 focus:border-primary focus:ring-0 rounded-xl font-bold text-sm transition-all"
+                placeholder="Digite para buscar e selecionar um PO..."
+                type="text"
+              />
+              <datalist id="receiving-po-options">
+                {filteredPOs.map((po) => (
                   <option key={po.id} value={po.id}>
-                    {po.id} - {po.vendor} ({po.items.length} itens)
+                    {buildPoLabel(po)}
                   </option>
                 ))}
-              </select>
+              </datalist>
+              {normalizeText(poSearchTerm) && filteredPOs.length === 0 && (
+                <p className="text-xs text-slate-500 font-bold mt-2">
+                  Nenhum pedido encontrado para "{poSearchTerm}".
+                </p>
+              )}
               {availablePOs.length === 0 && (
                 <p className="text-xs text-amber-500 font-bold mt-2">
                   ⚠️ Nenhum PO enviado disponivel para recebimento

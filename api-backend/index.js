@@ -1906,41 +1906,29 @@ app.post('/receipts/finalize', authenticate, async (req, res) => {
 
     for (let index = 0; index < receiptItems.length; index += 1) {
       const item = receiptItems[index];
-
-      const inventoryTarget = await client.query(
-        `
-          SELECT ctid, *
-            FROM inventory
-           WHERE TRIM(CAST(sku AS TEXT)) = TRIM(CAST($1 AS TEXT))
-             AND (
-               warehouse_id = $2
-               OR LOWER(TRIM(CAST(warehouse_id AS TEXT))) = 'all'
-             )
-           ORDER BY CASE WHEN warehouse_id = $2 THEN 0 ELSE 1 END,
-                    created_at DESC NULLS LAST
-           LIMIT 1
-        `,
-        [item.sku, targetWarehouseId]
-      );
-
-      if (inventoryTarget.rows.length === 0) {
-        await client.query('ROLLBACK');
-        res.status(400).json({
-          data: null,
-          error: `Item ${item.sku} nao encontrado no estoque do armazem ${targetWarehouseId}`,
-        });
-        return;
-      }
-
-      const inventoryUpdate = await client.query(
+      let inventoryUpdate = await client.query(
         `
           UPDATE inventory
              SET quantity = quantity + $1
-           WHERE ctid = $2::tid
+           WHERE TRIM(CAST(sku AS TEXT)) = TRIM(CAST($2 AS TEXT))
+             AND LOWER(TRIM(CAST(warehouse_id AS TEXT))) = LOWER(TRIM(CAST($3 AS TEXT)))
          RETURNING *
         `,
-        [item.received, inventoryTarget.rows[0].ctid]
+        [item.received, item.sku, targetWarehouseId]
       );
+
+      if (inventoryUpdate.rows.length === 0) {
+        inventoryUpdate = await client.query(
+          `
+            UPDATE inventory
+               SET quantity = quantity + $1
+             WHERE TRIM(CAST(sku AS TEXT)) = TRIM(CAST($2 AS TEXT))
+               AND LOWER(TRIM(CAST(warehouse_id AS TEXT))) = 'all'
+           RETURNING *
+          `,
+          [item.received, item.sku]
+        );
+      }
 
       if (inventoryUpdate.rows.length === 0) {
         throw new Error(`Falha ao atualizar estoque para SKU ${item.sku}`);
