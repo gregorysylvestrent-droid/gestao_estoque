@@ -1412,7 +1412,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const fetchMasterDataItemsPage = async (page: number) => {
+  const fetchMasterDataItemsPage = async (page: number, searchTerm = masterDataItemsSearchTerm) => {
     if (!user) return;
 
     const safePage = Math.max(1, page);

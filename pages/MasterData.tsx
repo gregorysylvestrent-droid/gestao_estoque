@@ -124,6 +124,25 @@ const VEHICLE_FIELD_CONFIG: VehicleFieldConfig[] = [
   { label: 'Status', field: 'status' },
 ];
 
+
+const toDateInputValue = (value: unknown) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const brDateMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (brDateMatch) {
+    const [, dd, mm, yyyy] = brDateMatch;
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+
+  return '';
+};
+
 const findSheetKeyValue = (row: Record<string, any>, ...keys: string[]) => {
   const rowKeys = Object.keys(row || {});
   for (const key of keys) {
@@ -355,6 +374,8 @@ export const MasterData: React.FC<MasterDataProps> = ({
           plate: existingData.plate || '',
           model: existingData.model || '',
           type: existingData.type || 'PROPRIO',
+          lastMaintenance: toDateInputValue(existingData.lastMaintenance),
+          nextMaintenanceDate: toDateInputValue(existingData.nextMaintenanceDate),
           fineManagement: existingData.fineManagement || 'NAO',
           status: existingData.status || 'Disponível',
         });
@@ -845,7 +866,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 border border-slate-100 dark:border-slate-800">
+          <div className={`bg-white dark:bg-slate-900 w-full ${activeTab === 'veiculos' ? 'max-w-7xl' : 'max-w-2xl'} rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 border border-slate-100 dark:border-slate-800`}>
             <div className="p-10 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
               <div>
                 <h3 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">
@@ -865,7 +886,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
             </div>
 
             <form onSubmit={handleSubmit} className="p-10 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className={`grid gap-6 ${activeTab === 'veiculos' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
                 {activeTab === 'itens' ? (
                   <>
                     <div className="space-y-2">
