@@ -1033,7 +1033,14 @@ export const App: React.FC = () => {
     location: item.location,
     batch: item.batch,
     expiry: item.expiry,
-    quantity: item.quantity,
+    quantity: toFiniteNumber(
+      item.quantity,
+      item.saldo_fisico_atual,
+      item.saldo_fisico,
+      item.saldo_total,
+      item.physical_balance,
+      item.total_balance
+    ),
     status: item.status,
     imageUrl: item.image_url,
     category: item.category,
