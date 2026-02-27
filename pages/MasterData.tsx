@@ -53,6 +53,77 @@ const formatPhone = (value: unknown) => {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
+
+const VEHICLE_FORM_DEFAULTS = {
+  plate: '',
+  model: '',
+  brand: '',
+  type: 'PROPRIO',
+  renavam: '',
+  chassi: '',
+  color: '',
+  modelYear: '',
+  manufactureYear: '',
+  city: '',
+  state: '',
+  owner: '',
+  fuel: '',
+  centerCode: '',
+  centerDescription: '',
+  currentKm: '',
+  previousKm: '',
+  nextMaintenanceDate: '',
+  nextMaintenanceKm: '',
+  fineManagement: 'NAO',
+  sector: '',
+  responsible: '',
+  status: 'Disponível',
+  costCenter: '',
+  lastMaintenance: '',
+};
+
+type VehicleFieldConfig = {
+  label: string;
+  field: keyof typeof VEHICLE_FORM_DEFAULTS;
+  required?: boolean;
+  inputType?: 'text' | 'number' | 'date';
+  options?: { label: string; value: string }[];
+};
+
+const VEHICLE_FIELD_CONFIG: VehicleFieldConfig[] = [
+  { label: 'Placa', field: 'plate', required: true },
+  { label: 'Renavam', field: 'renavam' },
+  { label: 'Chassi', field: 'chassi' },
+  { label: 'Marca', field: 'brand' },
+  { label: 'Modelo', field: 'model', required: true },
+  { label: 'Classe', field: 'type' },
+  { label: 'Cor', field: 'color' },
+  { label: 'Ano Modelo', field: 'modelYear', inputType: 'number' },
+  { label: 'Ano Fabricação', field: 'manufactureYear', inputType: 'number' },
+  { label: 'Cidade', field: 'city' },
+  { label: 'Estado', field: 'state' },
+  { label: 'Proprietário', field: 'owner' },
+  { label: 'Combustível', field: 'fuel' },
+  { label: 'Centro de Custo (Código)', field: 'centerCode' },
+  { label: 'Centro de Custo (Descrição)', field: 'centerDescription' },
+  { label: 'KM Atual', field: 'currentKm', inputType: 'number' },
+  { label: 'KM Anterior', field: 'previousKm', inputType: 'number' },
+  { label: 'Data Últ. Manutenção', field: 'lastMaintenance', inputType: 'date' },
+  { label: 'Data Próx. Manutenção', field: 'nextMaintenanceDate', inputType: 'date' },
+  { label: 'KM Próx. Manutenção', field: 'nextMaintenanceKm', inputType: 'number' },
+  {
+    label: 'Gestão de Multa',
+    field: 'fineManagement',
+    options: [
+      { label: 'Sim', value: 'SIM' },
+      { label: 'Não', value: 'NAO' },
+    ],
+  },
+  { label: 'Setor Veículo', field: 'sector' },
+  { label: 'Responsável', field: 'responsible' },
+  { label: 'Status', field: 'status' },
+];
+
 const findSheetKeyValue = (row: Record<string, any>, ...keys: string[]) => {
   const rowKeys = Object.keys(row || {});
   for (const key of keys) {
@@ -279,12 +350,13 @@ export const MasterData: React.FC<MasterDataProps> = ({
         });
       } else if (activeTab === 'veiculos') {
         setFormData({
+          ...VEHICLE_FORM_DEFAULTS,
+          ...existingData,
           plate: existingData.plate || '',
           model: existingData.model || '',
           type: existingData.type || 'PROPRIO',
+          fineManagement: existingData.fineManagement || 'NAO',
           status: existingData.status || 'Disponível',
-          costCenter: existingData.costCenter || '',
-          lastMaintenance: existingData.lastMaintenance || '',
         });
       } else {
         setFormData(existingData);
@@ -311,14 +383,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
       });
       setIsEditing(false);
     } else {
-      setFormData({
-        plate: '',
-        model: '',
-        type: 'PROPRIO',
-        status: 'Disponível',
-        costCenter: '',
-        lastMaintenance: '',
-      });
+      setFormData(VEHICLE_FORM_DEFAULTS);
       setIsEditing(false);
     }
 
@@ -354,7 +419,7 @@ export const MasterData: React.FC<MasterDataProps> = ({
         model: String(formData.model || '').trim(),
         type: String(formData.type || 'PROPRIO').trim(),
         status: String(formData.status || 'Disponível').trim(),
-        costCenter: String(formData.costCenter || '').trim(),
+        costCenter: String(formData.centerDescription || formData.centerCode || formData.costCenter || '').trim(),
         lastMaintenance: String(formData.lastMaintenance || '').trim(),
       };
       onAddRecord(type, payload, isEditing);
@@ -877,49 +942,34 @@ export const MasterData: React.FC<MasterDataProps> = ({
                   </>
                 ) : (
                   <>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Placa</label>
-                      <input
-                        required
-                        disabled={isEditing}
-                        value={formData.plate || ''}
-                        onChange={(e) => setFormData({ ...formData, plate: e.target.value.toUpperCase() })}
-                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Modelo</label>
-                      <input
-                        required
-                        value={formData.model || ''}
-                        onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tipo</label>
-                      <input
-                        value={formData.type || ''}
-                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Centro de Custo</label>
-                      <input
-                        value={formData.costCenter || ''}
-                        onChange={(e) => setFormData({ ...formData, costCenter: e.target.value })}
-                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
-                      <input
-                        value={formData.status || ''}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
-                      />
-                    </div>
+                    {VEHICLE_FIELD_CONFIG.map((item) => (
+                      <div className="space-y-2" key={item.field}>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{item.label}</label>
+                        {item.options ? (
+                          <select
+                            value={formData[item.field] || ''}
+                            onChange={(e) => setFormData({ ...formData, [item.field]: e.target.value })}
+                            className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
+                          >
+                            {item.options.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={item.inputType || 'text'}
+                            required={Boolean(item.required)}
+                            disabled={isEditing && item.field === 'plate'}
+                            value={formData[item.field] || ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              [item.field]: item.field === 'plate' ? e.target.value.toUpperCase() : e.target.value,
+                            })}
+                            className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm"
+                          />
+                        )}
+                      </div>
+                    ))}
                   </>
                 )}
               </div>
