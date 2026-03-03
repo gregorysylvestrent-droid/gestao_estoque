@@ -718,13 +718,22 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     const visibleByItem: Record<string, number> = {};
     const searchByItem: Record<string, string[]> = {};
     const searchOpenByItem: Record<string, boolean[]> = {};
+    const displayedQuoteIdsByItem: Record<string, string[]> = {};
 
     order.items.forEach((item) => {
       const forms = buildEmptyItemForms();
-      (order.quotes || []).slice(0, 5).forEach((quote, index) => {
+      const orderQuotes = order.quotes || [];
+      const itemQuotes = orderQuotes.filter((quote) => {
         const quotedItem = quote.items?.find((entry) => entry.sku === item.sku);
-        if (!quotedItem) return;
-        const computedItemTotal = Number((quotedItem.unitPrice || 0) * Number(item.qty || 0));
+        return Boolean(quotedItem && Number(quotedItem.unitPrice || 0) > 0);
+      });
+      const fallbackQuotes = orderQuotes.filter((quote) => !itemQuotes.some((itemQuote) => itemQuote.id === quote.id));
+      const quotesToDisplay = [...itemQuotes, ...fallbackQuotes].slice(0, 5);
+      displayedQuoteIdsByItem[item.sku] = quotesToDisplay.map((quote) => String(quote.id || ''));
+
+      quotesToDisplay.forEach((quote, index) => {
+        const quotedItem = quote.items?.find((entry) => entry.sku === item.sku);
+        const computedItemTotal = Number((quotedItem?.unitPrice || 0) * Number(item.qty || 0));
         forms[index] = {
           vendorId: String(quote.vendorId || ''),
           totalValue: Number.isFinite(computedItemTotal) && computedItemTotal > 0
@@ -736,7 +745,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       });
 
       const filledCount = forms.filter((form) => form.vendorId || form.totalValue).length;
-      visibleByItem[item.sku] = Math.max(1, Math.min(5, filledCount || order.quotes?.length || 1));
+      visibleByItem[item.sku] = Math.max(1, Math.min(5, filledCount || quotesToDisplay.length || 1));
       formsByItem[item.sku] = forms;
       searchByItem[item.sku] = forms.map((form) => {
         if (!form.vendorId) return '';
@@ -747,8 +756,9 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
 
     const selectedSlots = order.items.reduce<Record<string, number>>((acc, item) => {
       const itemSelectedQuoteId = item.selectedQuoteId;
+      const displayedQuoteIds = displayedQuoteIdsByItem[item.sku] || [];
       const preferredIndex = itemSelectedQuoteId
-        ? (order.quotes || []).findIndex((quote) => quote.id === itemSelectedQuoteId)
+        ? displayedQuoteIds.findIndex((quoteId) => quoteId === itemSelectedQuoteId)
         : -1;
       const firstFilledIndex = formsByItem[item.sku].findIndex((form) => Boolean(form.vendorId && parseQuoteMoney(form.totalValue) > 0));
       acc[item.sku] = preferredIndex >= 0 ? preferredIndex : (firstFilledIndex >= 0 ? firstFilledIndex : 0);
