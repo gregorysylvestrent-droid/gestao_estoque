@@ -1,4 +1,4 @@
-﻿﻿
+
 export type Module = 'dashboard' | 'recebimento' | 'movimentacoes' | 'auditoria_geral' | 'estoque' | 'expedicao' | 'inventario_ciclico' | 'compras' | 'gestao_compras' | 'cadastro' | 'relatorios' | 'configuracoes';
 
 export const ALL_MODULES: { id: Module; label: string }[] = [
@@ -143,7 +143,7 @@ export interface PurchaseOrder {
   id: string;
   vendor: string;
   requestDate: string;
-  items: { sku: string; name: string; qty: number; price: number }[];
+  items: { sku: string; name: string; qty: number; price: number; selectedQuoteId?: string; selectedVendorId?: string; selectedVendorName?: string }[];
   status: PurchaseOrderStatus;
   total: number;
   priority: 'normal' | 'urgente' | 'critico';
