@@ -2531,14 +2531,6 @@ export const App: React.FC = () => {
     const globalSelectedQuoteId = selectedQuoteSet.size === 1 ? Array.from(selectedQuoteSet)[0] : null;
     const vendorLabel = selectedVendors.length === 1 ? String(selectedVendors[0]) : 'Múltiplos fornecedores';
 
-    const adjustedItems = po.items.map((item) => {
-      const quotedItem = selectedQuote.items?.find((quoteItem) => quoteItem.sku === item.sku);
-      return {
-        ...item,
-        qty: quotedItem && Number(quotedItem.unitPrice) > 0 ? item.qty : 0,
-      };
-    });
-
     const newApprovalHistory = appendPOHistory(
       po.approvalHistory,
       createPOStatusHistoryEntry('pendente', 'Pedido enviado para aprovação do gestor')
