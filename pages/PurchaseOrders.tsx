@@ -418,6 +418,10 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       chassis?: string;
       year?: number | string;
       renavam?: string;
+      classe?: string;
+      ano_fabricacao?: number | string;
+      desc_modelo?: string;
+      desc_marca?: string;
     }) | undefined;
   }, [vehicles, quotingPO]);
 
@@ -2843,10 +2847,11 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                     </div>
                     <div className="space-y-2" >
                       <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm font-black text-slate-800 dark:text-white" >
-                        <span>PLACA: <span className="font-semibold text-slate-600 dark:text-slate-300" > {quotingPO.plate || '-'} </span></span >
-                        <span>ANO: <span className="font-semibold text-slate-600 dark:text-slate-300" > {selectedVehicle?.year ?? '-'}</span></span >
-                        <span>CHASSI: <span className="font-semibold text-slate-600 dark:text-slate-300" > {selectedVehicle?.chassis || '-'}</span></span >
-                        <span>RENAVAM: <span className="font-semibold text-slate-600 dark:text-slate-300" > {selectedVehicle?.renavam || '-'}</span></span >
+                        <span>PLACA: <span className="font-semibold text-slate-600 dark:text-slate-300" > {selectedVehicle?.plate || quotingPO.plate || '-'} </span></span >
+                        <span>TIPO: <span className="font-semibold text-slate-600 dark:text-slate-300" > {selectedVehicle?.classe || selectedVehicle?.type || '-'}</span></span >
+                        <span>ANO: <span className="font-semibold text-slate-600 dark:text-slate-300" > {selectedVehicle?.ano_fabricacao ?? '-'}</span></span >
+                        <span>MODELO: <span className="font-semibold text-slate-600 dark:text-slate-300" > {selectedVehicle?.desc_modelo || selectedVehicle?.model || '-'}</span></span >
+                        <span>MARCA: <span className="font-semibold text-slate-600 dark:text-slate-300" > {selectedVehicle?.desc_marca || '-'}</span></span >
                       </div>
                     </div>
                   </div>

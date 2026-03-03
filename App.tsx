@@ -293,6 +293,10 @@ export const App: React.FC = () => {
     costCenter: String(
       row?.desc_centro_custo ?? row?.cod_centro_custo ?? row?.cost_center ?? row?.centro_custo ?? ''
     ),
+    classe: String(row?.classe ?? row?.type ?? ''),
+    ano_fabricacao: row?.ano_fabricacao ?? row?.anoFabricacao ?? row?.year ?? '',
+    desc_modelo: String(row?.desc_modelo ?? row?.model ?? ''),
+    desc_marca: String(row?.desc_marca ?? row?.brand ?? ''),
   });
 
   const normalizeVehicleInput = (vehicle: Partial<Vehicle>): Vehicle | null => {

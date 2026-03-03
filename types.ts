@@ -184,6 +184,10 @@ export interface Vehicle {
   lastMaintenance: string;
   status: 'Disponível' | 'Em Viagem' | 'Manutenção' | string;
   costCenter?: string;
+  classe?: string;
+  ano_fabricacao?: number | string;
+  desc_modelo?: string;
+  desc_marca?: string;
 }
 
 export interface User {
