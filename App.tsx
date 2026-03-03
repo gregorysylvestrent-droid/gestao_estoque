@@ -2448,7 +2448,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleAddQuotes = async (poId: string, quotes: Quote[]) => {
+  const handleAddQuotes = async (poId: string, quotes: Quote[], selectedQuoteIdByItem?: Record<string, string>) => {
     const po = purchaseOrders.find((entry) => entry.id === poId);
     if (!po) return;
 
@@ -2458,21 +2458,36 @@ export const App: React.FC = () => {
       po.approvalHistory,
       createPOStatusHistoryEntry(po.status, 'Cotações salvas no pedido')
     );
+    const updatedItems = po.items.map((item) => {
+      const selectedItemQuoteId = selectedQuoteIdByItem?.[item.sku] || item.selectedQuoteId || '';
+      const selectedQuote = quotes.find((quote) => quote.id === selectedItemQuoteId);
+      const selectedQuoteItem = selectedQuote?.items?.find((quoteItem) => quoteItem.sku === item.sku);
+      return {
+        ...item,
+        selectedQuoteId: selectedItemQuoteId || undefined,
+        selectedVendorId: selectedQuote?.vendorId || undefined,
+        selectedVendorName: selectedQuote?.vendorName || undefined,
+        price: selectedQuoteItem && Number(selectedQuoteItem.unitPrice) > 0
+          ? Number(selectedQuoteItem.unitPrice)
+          : Number(item.price || 0),
+      };
+    });
     const { error } = await api.from('purchase_orders').eq('id', poId).update({
       quotes,
+      items: updatedItems,
       quotes_added_at: quotesAddedAtIso,
       approval_history: newApprovalHistory
     });
 
     if (!error) {
       setPurchaseOrders(prev => prev.map(o =>
-        o.id === poId ? { ...o, quotes, quotesAddedAt, approvalHistory: newApprovalHistory } : o
+        o.id === poId ? { ...o, quotes, items: updatedItems, quotesAddedAt, approvalHistory: newApprovalHistory } : o
       ));
       showNotification(`Cotações salvas no pedido ${poId}`, 'success');
     }
   };
 
-  const handleSendToApproval = async (poId: string, selectedQuoteId: string, quotesOverride?: Quote[]) => {
+  const handleSendToApproval = async (poId: string, selectedQuoteId: string, quotesOverride?: Quote[], selectedQuoteIdByItem?: Record<string, string>) => {
     const po = purchaseOrders.find(o => o.id === poId);
     if (!po) return;
 
@@ -2480,8 +2495,41 @@ export const App: React.FC = () => {
       ? quotesOverride
       : (po.quotes || []);
 
-    const selectedQuote = effectiveQuotes.find(q => q.id === selectedQuoteId);
-    if (!selectedQuote) return;
+    const fallbackQuoteId = selectedQuoteId || po.selectedQuoteId || '';
+    const selectedMap = po.items.reduce<Record<string, string>>((acc, item) => {
+      const quoteId = selectedQuoteIdByItem?.[item.sku] || item.selectedQuoteId || fallbackQuoteId;
+      if (quoteId) acc[item.sku] = quoteId;
+      return acc;
+    }, {});
+
+    const selectedIds = Object.values(selectedMap);
+    if (selectedIds.length === 0) {
+      showNotification('Selecione ao menos uma cotação por item antes de enviar para aprovação.', 'warning');
+      return;
+    }
+
+    const selectedQuoteSet = new Set(selectedIds);
+    const updatedQuotes = effectiveQuotes.map(q => ({ ...q, isSelected: selectedQuoteSet.has(q.id) }));
+
+    const updatedItems = po.items.map((item) => {
+      const selectedItemQuoteId = selectedMap[item.sku] || '';
+      const itemQuote = effectiveQuotes.find((quote) => quote.id === selectedItemQuoteId);
+      const quoteItem = itemQuote?.items?.find((entry) => entry.sku === item.sku);
+      return {
+        ...item,
+        selectedQuoteId: selectedItemQuoteId || undefined,
+        selectedVendorId: itemQuote?.vendorId || undefined,
+        selectedVendorName: itemQuote?.vendorName || undefined,
+        price: quoteItem && Number(quoteItem.unitPrice) > 0
+          ? Number(quoteItem.unitPrice)
+          : Number(item.price || 0),
+      };
+    });
+
+    const selectedVendors = Array.from(new Set(updatedItems.map((item) => item.selectedVendorName).filter(Boolean)));
+    const total = updatedItems.reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.price || 0), 0);
+    const globalSelectedQuoteId = selectedQuoteSet.size === 1 ? Array.from(selectedQuoteSet)[0] : null;
+    const vendorLabel = selectedVendors.length === 1 ? String(selectedVendors[0]) : 'Múltiplos fornecedores';
 
     const adjustedItems = po.items.map((item) => {
       const quotedItem = selectedQuote.items?.find((quoteItem) => quoteItem.sku === item.sku);
@@ -2491,18 +2539,17 @@ export const App: React.FC = () => {
       };
     });
 
-    const updatedQuotes = effectiveQuotes.map(q => ({ ...q, isSelected: q.id === selectedQuoteId }));
     const newApprovalHistory = appendPOHistory(
       po.approvalHistory,
       createPOStatusHistoryEntry('pendente', 'Pedido enviado para aprovação do gestor')
     );
 
     const { error } = await api.from('purchase_orders').eq('id', poId).update({
-      selected_quote_id: selectedQuoteId,
-      vendor: selectedQuote.vendorName,
-      total: selectedQuote.totalValue,
+      selected_quote_id: globalSelectedQuoteId,
+      vendor: vendorLabel,
+      total,
       status: 'pendente',
-      items: adjustedItems,
+      items: updatedItems,
       quotes: updatedQuotes,
       approval_history: newApprovalHistory
     });
@@ -2510,28 +2557,28 @@ export const App: React.FC = () => {
     if (!error) {
       setPurchaseOrders(prev => prev.map(o => o.id === poId ? {
         ...o,
-        selectedQuoteId,
-        vendor: selectedQuote.vendorName,
-        total: selectedQuote.totalValue,
+        selectedQuoteId: globalSelectedQuoteId || undefined,
+        vendor: vendorLabel,
+        total,
         status: 'pendente' as const,
-        items: adjustedItems,
+        items: updatedItems,
         quotes: updatedQuotes,
         approvalHistory: newApprovalHistory
       } : o));
       setPagedPurchaseOrders(prev => prev.map(o => o.id === poId ? {
         ...o,
-        selectedQuoteId,
-        vendor: selectedQuote.vendorName,
-        total: selectedQuote.totalValue,
+        selectedQuoteId: globalSelectedQuoteId || undefined,
+        vendor: vendorLabel,
+        total,
         status: 'pendente' as const,
         quotes: updatedQuotes,
-        items: adjustedItems,
+        items: updatedItems,
         approvalHistory: newApprovalHistory
       } : o));
       addActivity('compra', 'Cotações Enviadas', `Pedido ${poId} enviado para aprovação do gestor`);
       addNotification(
         `Pendente: ${poId}`,
-        `Pedido enviado para sua aprovação. Vendor: ${selectedQuote.vendorName}.`,
+        `Pedido enviado para sua aprovação. Fornecedor: ${vendorLabel}.`,
         'info'
       );
       showNotification(`Pedido ${poId} enviado para aprovação!`, 'success');
@@ -2546,11 +2593,22 @@ export const App: React.FC = () => {
     if (!selectedQuote) return;
 
     const updatedQuotes = po.quotes?.map((quote) => ({ ...quote, isSelected: quote.id === selectedQuoteId }));
+    const updatedItems = po.items.map((item) => {
+      const quoteItem = selectedQuote.items?.find((entry) => entry.sku === item.sku);
+      return {
+        ...item,
+        selectedQuoteId,
+        selectedVendorId: selectedQuote.vendorId,
+        selectedVendorName: selectedQuote.vendorName,
+        price: quoteItem && Number(quoteItem.unitPrice) > 0 ? Number(quoteItem.unitPrice) : Number(item.price || 0),
+      };
+    });
 
     const { error } = await api.from('purchase_orders').eq('id', poId).update({
       selected_quote_id: selectedQuoteId,
       vendor: selectedQuote.vendorName,
       total: selectedQuote.totalValue,
+      items: updatedItems,
       quotes: updatedQuotes
     });
 
@@ -2560,6 +2618,7 @@ export const App: React.FC = () => {
         selectedQuoteId,
         vendor: selectedQuote.vendorName,
         total: selectedQuote.totalValue,
+        items: updatedItems,
         quotes: updatedQuotes
       } : order));
       setPagedPurchaseOrders((prev) => prev.map((order) => order.id === poId ? {
@@ -2567,6 +2626,7 @@ export const App: React.FC = () => {
         selectedQuoteId,
         vendor: selectedQuote.vendorName,
         total: selectedQuote.totalValue,
+        items: updatedItems,
         quotes: updatedQuotes
       } : order));
     }
