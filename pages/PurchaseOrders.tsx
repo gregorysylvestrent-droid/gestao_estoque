@@ -1519,16 +1519,20 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
 
     const computedRows = (order.items || []).map((item) => {
       const qty = Number(item.qty || 0);
+      const approvedUnit = Number(item.price || 0);
       const quoteForItem = resolveQuoteForItem(item.sku);
       const quotedItem = quoteForItem?.items?.find((entry) => entry.sku === item.sku);
-      const unit = Number(quotedItem?.unitPrice || item.price || 0);
+      const quoteUnit = Number(quotedItem?.unitPrice || 0);
+      const unit = approvedUnit > 0 ? approvedUnit : quoteUnit;
       const subtotal = qty * unit;
       return { item, qty, unit, subtotal };
     });
 
-    const totalValue = computedRows.reduce((sum, row) => sum + row.subtotal, 0);
+    const totalValue = Number(order.total || 0) > 0
+      ? Number(order.total || 0)
+      : computedRows.reduce((sum, row) => sum + row.subtotal, 0);
     const uniqueVendors = Array.from(new Set(computedRows
-      .map((row) => resolveQuoteForItem(row.item.sku)?.vendorName || '')
+      .map((row) => row.item.selectedVendorName || resolveQuoteForItem(row.item.sku)?.vendorName || '')
       .filter(Boolean)));
     const supplierLabel = uniqueVendors.length > 1
       ? `Múltiplos (${uniqueVendors.join(' | ')})`
