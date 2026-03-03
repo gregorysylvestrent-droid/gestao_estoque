@@ -34,8 +34,8 @@ interface PurchaseOrdersProps {
   inventory: InventoryItem[];
   vehicles?: Vehicle[];
   onCreateOrder: (order: PurchaseOrder) => void;
-  onAddQuotes: (poId: string, quotes: Quote[]) => void;
-  onSendToApproval: (poId: string, selectedQuoteId: string, quotesOverride?: Quote[]) => void | Promise<void>;
+  onAddQuotes: (poId: string, quotes: Quote[], selectedQuoteIdByItem?: Record<string, string>) => void;
+  onSendToApproval: (poId: string, selectedQuoteId: string, quotesOverride?: Quote[], selectedQuoteIdByItem?: Record<string, string>) => void | Promise<void>;
   onUpdateSelectedQuote: (poId: string, selectedQuoteId: string) => Promise<void>;
   onMarkAsSent: (poId: string, vendorOrderNumber: string) => void;
   onApprove: (id: string) => void;
@@ -746,8 +746,12 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     });
 
     const selectedSlots = order.items.reduce<Record<string, number>>((acc, item) => {
+      const itemSelectedQuoteId = item.selectedQuoteId;
+      const preferredIndex = itemSelectedQuoteId
+        ? (order.quotes || []).findIndex((quote) => quote.id === itemSelectedQuoteId)
+        : -1;
       const firstFilledIndex = formsByItem[item.sku].findIndex((form) => Boolean(form.vendorId && parseQuoteMoney(form.totalValue) > 0));
-      acc[item.sku] = firstFilledIndex >= 0 ? firstFilledIndex : 0;
+      acc[item.sku] = preferredIndex >= 0 ? preferredIndex : (firstFilledIndex >= 0 ? firstFilledIndex : 0);
       return acc;
     }, {});
 
@@ -924,7 +928,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     setSelectedQuoteId(fallbackSelectedQuoteId);
 
     const selectedByItem = order.items.reduce<Record<string, string>>((acc, item) => {
-      acc[item.sku] = fallbackSelectedQuoteId || getRecommendedQuoteIdByItem(order, item.sku);
+      acc[item.sku] = item.selectedQuoteId || fallbackSelectedQuoteId || getRecommendedQuoteIdByItem(order, item.sku);
       return acc;
     }, {});
     setSelectedQuoteIdByItem(selectedByItem);
@@ -985,7 +989,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
 
   const buildQuotesFromForms = () => {
     if (!quotingPO) {
-      return { quotes: [] as Quote[], selectedQuoteIdForApproval: '' };
+      return { quotes: [] as Quote[], selectedQuoteIdForApproval: '', selectedQuoteIdByItem: {} as Record<string, string> };
     }
 
     const now = Date.now();
@@ -1049,13 +1053,19 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       };
     });
 
-    const selectedVendorIds = Array.from(selectedVendorByItem.values());
-    const uniqueSelectedVendorIds = Array.from(new Set(selectedVendorIds));
-    const selectedQuoteIdForApproval = uniqueSelectedVendorIds.length === 1
-      ? (quotes.find((quote) => quote.vendorId === uniqueSelectedVendorIds[0])?.id || '')
-      : '';
+    const selectedQuoteIdByItem = Array.from(selectedVendorByItem.entries()).reduce<Record<string, string>>((acc, [sku, vendorId]) => {
+      const matchingQuote = quotes.find((quote) => quote.vendorId === vendorId);
+      if (matchingQuote) {
+        acc[sku] = matchingQuote.id;
+      }
+      return acc;
+    }, {});
 
-    return { quotes, selectedQuoteIdForApproval };
+    const selectedQuoteIds = Object.values(selectedQuoteIdByItem);
+    const uniqueSelectedQuoteIds = Array.from(new Set(selectedQuoteIds));
+    const selectedQuoteIdForApproval = uniqueSelectedQuoteIds.length === 1 ? uniqueSelectedQuoteIds[0] : '';
+
+    return { quotes, selectedQuoteIdForApproval, selectedQuoteIdByItem };
   };
 
   const handleSubmitQuotations = () => {
@@ -1073,14 +1083,14 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     if (result.quotes.length === 0) {
       alert('Você pode salvar sem cotações preenchidas, mas preencha ao menos uma para avançar para aprovação.');
       saveQuotationDraftSnapshot(quotingPO.id);
-      onAddQuotes(quotingPO.id, []);
+      onAddQuotes(quotingPO.id, [], {});
       setIsQuotationModalOpen(false);
       resetQuotationForm();
       return;
     }
 
     saveQuotationDraftSnapshot(quotingPO.id);
-    onAddQuotes(quotingPO.id, result.quotes);
+    onAddQuotes(quotingPO.id, result.quotes, result.selectedQuoteIdByItem);
     setIsQuotationModalOpen(false);
     resetQuotationForm();
   };
@@ -1103,7 +1113,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     }
 
     saveQuotationDraftSnapshot(quotingPO.id);
-    await Promise.resolve(onAddQuotes(quotingPO.id, result.quotes));
+    await Promise.resolve(onAddQuotes(quotingPO.id, result.quotes, result.selectedQuoteIdByItem));
 
     const selectedQuoteIdForApproval = result.selectedQuoteIdForApproval || getRecommendedQuoteId({ ...quotingPO, quotes: result.quotes });
     if (!selectedQuoteIdForApproval) {
@@ -1111,7 +1121,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       return;
     }
 
-    await Promise.resolve(onSendToApproval(quotingPO.id, selectedQuoteIdForApproval, result.quotes));
+    await Promise.resolve(onSendToApproval(quotingPO.id, selectedQuoteIdForApproval, result.quotes, result.selectedQuoteIdByItem));
     removeQuotationDraftSnapshot(quotingPO.id);
     setIsQuotationModalOpen(false);
     resetQuotationForm();
@@ -1133,13 +1143,15 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       return;
     }
 
-    const recommendedQuoteId = getRecommendedQuoteId(order);
-    if (!recommendedQuoteId) {
-      alert('Não foi possível sugerir uma cotação válida para aprovação.');
-      return;
-    }
+    const selectedQuoteIdByItem = order.items.reduce<Record<string, string>>((acc, item) => {
+      const quoteId = item.selectedQuoteId || getRecommendedQuoteIdByItem(order, item.sku);
+      if (quoteId) acc[item.sku] = quoteId;
+      return acc;
+    }, {});
+    const uniqueQuoteIds = Array.from(new Set(Object.values(selectedQuoteIdByItem)));
+    const recommendedQuoteId = uniqueQuoteIds.length === 1 ? uniqueQuoteIds[0] : (order.selectedQuoteId || '');
 
-    onSendToApproval(order.id, recommendedQuoteId);
+    onSendToApproval(order.id, recommendedQuoteId, undefined, selectedQuoteIdByItem);
   };
 
   const handleOpenSendModal = (order: PurchaseOrder) => {
