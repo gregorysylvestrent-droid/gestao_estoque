@@ -34,8 +34,8 @@ interface PurchaseOrdersProps {
   inventory: InventoryItem[];
   vehicles?: Vehicle[];
   onCreateOrder: (order: PurchaseOrder) => void;
-  onAddQuotes: (poId: string, quotes: Quote[], selectedQuoteIdByItem?: Record<string, string>) => void;
-  onSendToApproval: (poId: string, selectedQuoteId: string, quotesOverride?: Quote[], selectedQuoteIdByItem?: Record<string, string>) => void | Promise<void>;
+  onAddQuotes: (poId: string, quotes: Quote[], selectedQuoteIdByItem?: Record<string, string>, itemsOverride?: PurchaseOrder['items']) => void | Promise<void>;
+  onSendToApproval: (poId: string, selectedQuoteId: string, quotesOverride?: Quote[], selectedQuoteIdByItem?: Record<string, string>, itemsOverride?: PurchaseOrder['items']) => void | Promise<void>;
   onUpdateSelectedQuote: (poId: string, selectedQuoteId: string) => Promise<void>;
   onMarkAsSent: (poId: string, vendorOrderNumber: string) => void;
   onApprove: (id: string) => void;
@@ -53,6 +53,12 @@ const getStatusColor = (status: PurchaseOrder['status']) => {
     case 'cancelado': return 'bg-red-100 text-red-700 border-red-200';
     default: return 'bg-slate-100 text-slate-500 border-slate-200';
   }
+};
+
+
+const getBuyerFromApprovalHistory = (order: PurchaseOrder) => {
+  const requisitionEntry = (order.approvalHistory || []).find((entry) => entry?.status === 'requisicao' && String(entry?.by || '').trim().length > 0);
+  return String(requisitionEntry?.by || '').trim();
 };
 
 const StatusProgressBar: React.FC<{ order: PurchaseOrder; onPrint?: () => void }> = ({ order, onPrint }) => {
@@ -362,6 +368,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   const [poCostCenterFilter, setPoCostCenterFilter] = useState('');
   const [poStatusFilter, setPoStatusFilter] = useState('');
   const [poRequesterFilter, setPoRequesterFilter] = useState('');
+  const [poBuyerFilter, setPoBuyerFilter] = useState('');
   const [poSortKey, setPoSortKey] = useState<PoSortKey>('requestDate');
   const [poSortDirection, setPoSortDirection] = useState<PoSortDirection>('desc');
   const [visibleQuoteForms, setVisibleQuoteForms] = useState(1);
@@ -515,6 +522,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   }, [itemSearch, inventory]);
 
   const totalOrder = useMemo(() => itemsList.reduce((acc, curr) => acc + (curr.qty * curr.price), 0), [itemsList]);
+
   const filteredSortedOrders = useMemo(() => {
     const normalize = (value: unknown) =>
       String(value ?? '')
@@ -528,11 +536,13 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     const costCenterFilter = normalize(poCostCenterFilter);
     const statusFilter = normalize(poStatusFilter);
     const requesterFilter = normalize(poRequesterFilter);
+    const buyerFilter = normalize(poBuyerFilter);
 
     const baseOrders = orders.filter((order) => {
       const itemsJoined = (order.items || [])
         .map((item) => `${item.name || ''} ${item.sku || ''}`)
         .join(' | ');
+      const buyerName = getBuyerFromApprovalHistory(order);
       const haystack = normalize([
         order.id,
         order.requestDate,
@@ -544,6 +554,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
         order.priority,
         itemsJoined,
         order.vendorOrderNumber,
+        buyerName,
       ].join(' '));
 
       const matchesSearch = !search || haystack.includes(search);
@@ -551,7 +562,8 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       const matchesCostCenter = !costCenterFilter || normalize(order.costCenter).includes(costCenterFilter);
       const matchesStatus = !statusFilter || normalize(PO_STATUS_LABELS[order.status] || order.status).includes(statusFilter);
       const matchesRequester = !requesterFilter || normalize(order.requester).includes(requesterFilter);
-      return matchesSearch && matchesPlate && matchesCostCenter && matchesStatus && matchesRequester;
+      const matchesBuyer = !buyerFilter || normalize(buyerName).includes(buyerFilter);
+      return matchesSearch && matchesPlate && matchesCostCenter && matchesStatus && matchesRequester && matchesBuyer;
     });
 
     return baseOrders.sort((a, b) => {
@@ -579,7 +591,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       };
       return valueA[poSortKey].localeCompare(valueB[poSortKey], 'pt-BR', { numeric: true }) * factor;
     });
-  }, [orders, poSearch, poPlateFilter, poCostCenterFilter, poStatusFilter, poRequesterFilter, poSortKey, poSortDirection]);
+  }, [orders, poSearch, poPlateFilter, poCostCenterFilter, poStatusFilter, poRequesterFilter, poBuyerFilter, poSortKey, poSortDirection]);
 
   const paginatedFilteredOrders = useMemo(() => {
     const startIndex = Math.max(0, (currentPage - 1) * pageSize);
@@ -608,6 +620,15 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     const values = new Set<string>();
     orders.forEach((order) => {
       const value = String(order.requester || '').trim();
+      if (value) values.add(value);
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [orders]);
+
+  const buyerOptions = useMemo(() => {
+    const values = new Set<string>();
+    orders.forEach((order) => {
+      const value = getBuyerFromApprovalHistory(order);
       if (value) values.add(value);
     });
     return Array.from(values).sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -947,6 +968,21 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     setIsQuotationModalOpen(true);
   };
 
+  const handleUpdateQuotingItemQty = (sku: string, rawValue: string) => {
+    if (!quotingPO) return;
+
+    const parsed = Number.parseInt(rawValue, 10);
+    const safeQty = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+
+    setQuotingPO((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map((entry) => (entry.sku === sku ? { ...entry, qty: safeQty } : entry)),
+      };
+    });
+  };
+
   const quoteCoversAllOrderItems = (order: PurchaseOrder, quote: Quote) =>
     order.items.every((item) => {
       const quotedItem = quote.items?.find((entry) => entry.sku === item.sku);
@@ -1094,14 +1130,14 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     if (result.quotes.length === 0) {
       alert('Você pode salvar sem cotações preenchidas, mas preencha ao menos uma para avançar para aprovação.');
       saveQuotationDraftSnapshot(quotingPO.id);
-      onAddQuotes(quotingPO.id, [], {});
+      void Promise.resolve(onAddQuotes(quotingPO.id, [], {}, quotingPO.items));
       setIsQuotationModalOpen(false);
       resetQuotationForm();
       return;
     }
 
     saveQuotationDraftSnapshot(quotingPO.id);
-    onAddQuotes(quotingPO.id, result.quotes, result.selectedQuoteIdByItem);
+    void Promise.resolve(onAddQuotes(quotingPO.id, result.quotes, result.selectedQuoteIdByItem, quotingPO.items));
     setIsQuotationModalOpen(false);
     resetQuotationForm();
   };
@@ -1124,7 +1160,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     }
 
     saveQuotationDraftSnapshot(quotingPO.id);
-    await Promise.resolve(onAddQuotes(quotingPO.id, result.quotes, result.selectedQuoteIdByItem));
+    await Promise.resolve(onAddQuotes(quotingPO.id, result.quotes, result.selectedQuoteIdByItem, quotingPO.items));
 
     const selectedQuoteIdForApproval = result.selectedQuoteIdForApproval || getRecommendedQuoteId({ ...quotingPO, quotes: result.quotes });
     if (!selectedQuoteIdForApproval) {
@@ -1132,7 +1168,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       return;
     }
 
-    await Promise.resolve(onSendToApproval(quotingPO.id, selectedQuoteIdForApproval, result.quotes, result.selectedQuoteIdByItem));
+    await Promise.resolve(onSendToApproval(quotingPO.id, selectedQuoteIdForApproval, result.quotes, result.selectedQuoteIdByItem, quotingPO.items));
     removeQuotationDraftSnapshot(quotingPO.id);
     setIsQuotationModalOpen(false);
     resetQuotationForm();
@@ -1844,6 +1880,21 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                   <div>
                     <p className="text-xs font-black text-slate-800 dark:text-white" > {item.name} </p>
                     <p className="text-[10px] font-black text-primary uppercase tracking-wider mt-1" > Cód.Produto: {item.sku} </p>
+                    <div className="mt-2" >
+                      <label className="text-[10px] font-bold text-slate-500" > Quantidade (itens a cotar): </label>
+                      <div className="mt-1 flex items-center gap-2" >
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={item.qty}
+                          onChange={(event) => handleUpdateQuotingItemQty(item.sku, event.target.value)}
+                          disabled={quotationMode === 'analyze'}
+                          className={`w-24 px-2 py-1 rounded-lg border text-xs font-black bg-white dark:bg-slate-800 ${quotationMode === 'analyze' ? 'border-slate-200 dark:border-slate-700 opacity-70 cursor-not-allowed' : 'border-primary/40 focus:border-primary'}`}
+                        />
+                        <span className="text-[10px] font-bold text-slate-500" > un. </span>
+                      </div>
+                    </div>
                     <p className="text-[10px] font-bold text-slate-500 mt-1" > Quantidade: {item.qty} un.</p>
                   </div>
 
@@ -2131,12 +2182,27 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                 ))
               }
             </select>
+            <select
+              value={poBuyerFilter}
+              onChange={(e) => setPoBuyerFilter(e.target.value)}
+              className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
+            >
+              <option value="" > Todos os compradores </option>
+              {
+                buyerOptions.map((buyer) => (
+                  <option key={buyer} value={buyer} > {buyer} </option>
+                ))
+              }
+            </select>
             <button
               type="button"
               onClick={() => {
                 setPoSearch('');
                 setPoPlateFilter('');
                 setPoCostCenterFilter('');
+                setPoStatusFilter('');
+                setPoRequesterFilter('');
+                setPoBuyerFilter('');
               }}
               className="px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
             >

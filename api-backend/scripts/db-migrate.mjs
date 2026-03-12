@@ -49,7 +49,15 @@ try {
   process.exit(0);
 } catch (err) {
   console.error('Falha ao aplicar migration.');
-  console.error(err instanceof Error ? err.message : String(err));
+  console.error({
+    message: err.message,
+    detail: err.detail,
+    table: err.table,
+    column: err.column,
+    constraint: err.constraint,
+    where: err.where,
+    schema: err.schema,
+  });
   process.exit(1);
 } finally {
   try {

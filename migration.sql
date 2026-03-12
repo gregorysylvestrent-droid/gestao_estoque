@@ -510,13 +510,13 @@ SET
   razao_social = COALESCE(NULLIF(BTRIM(razao_social), ''), NULLIF(BTRIM(name), ''), 'FORNECEDOR SEM NOME'),
   name = COALESCE(NULLIF(BTRIM(name), ''), NULLIF(BTRIM(razao_social), ''), 'FORNECEDOR SEM NOME'),
   nome_fantasia = NULLIF(BTRIM(nome_fantasia), ''),
-  telefone = COALESCE(NULLIF(BTRIM(telefone), ''), NULLIF(BTRIM(contact), '')),
+  telefone = NULLIF(LEFT(COALESCE(NULLIF(BTRIM(telefone), ''), NULLIF(BTRIM(contact), '')), 20), ''),
   cnpj = NULLIF(regexp_replace(COALESCE(cnpj, ''), '[^0-9]', '', 'g'), '')
 WHERE
   razao_social IS DISTINCT FROM COALESCE(NULLIF(BTRIM(razao_social), ''), NULLIF(BTRIM(name), ''), 'FORNECEDOR SEM NOME')
   OR name IS DISTINCT FROM COALESCE(NULLIF(BTRIM(name), ''), NULLIF(BTRIM(razao_social), ''), 'FORNECEDOR SEM NOME')
   OR nome_fantasia IS DISTINCT FROM NULLIF(BTRIM(nome_fantasia), '')
-  OR telefone IS DISTINCT FROM COALESCE(NULLIF(BTRIM(telefone), ''), NULLIF(BTRIM(contact), ''))
+  OR telefone IS DISTINCT FROM NULLIF(LEFT(COALESCE(NULLIF(BTRIM(telefone), ''), NULLIF(BTRIM(contact), '')), 20), '')
   OR cnpj IS DISTINCT FROM NULLIF(regexp_replace(COALESCE(cnpj, ''), '[^0-9]', '', 'g'), '');
 
 ALTER TABLE vendors ALTER COLUMN razao_social TYPE VARCHAR(150) USING LEFT(COALESCE(razao_social, ''), 150);

@@ -2456,7 +2456,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleAddQuotes = async (poId: string, quotes: Quote[], selectedQuoteIdByItem?: Record<string, string>) => {
+  const handleAddQuotes = async (poId: string, quotes: Quote[], selectedQuoteIdByItem?: Record<string, string>, itemsOverride?: PurchaseOrder['items']) => {
     const po = purchaseOrders.find((entry) => entry.id === poId);
     if (!po) return;
 
@@ -2466,7 +2466,8 @@ export const App: React.FC = () => {
       po.approvalHistory,
       createPOStatusHistoryEntry(po.status, 'Cotações salvas no pedido')
     );
-    const updatedItems = po.items.map((item) => {
+    const sourceItems = Array.isArray(itemsOverride) && itemsOverride.length > 0 ? itemsOverride : po.items;
+    const updatedItems = sourceItems.map((item) => {
       const selectedItemQuoteId = selectedQuoteIdByItem?.[item.sku] || item.selectedQuoteId || '';
       const selectedQuote = quotes.find((quote) => quote.id === selectedItemQuoteId);
       const selectedQuoteItem = selectedQuote?.items?.find((quoteItem) => quoteItem.sku === item.sku);
@@ -2495,7 +2496,7 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleSendToApproval = async (poId: string, selectedQuoteId: string, quotesOverride?: Quote[], selectedQuoteIdByItem?: Record<string, string>) => {
+  const handleSendToApproval = async (poId: string, selectedQuoteId: string, quotesOverride?: Quote[], selectedQuoteIdByItem?: Record<string, string>, itemsOverride?: PurchaseOrder['items']) => {
     const po = purchaseOrders.find(o => o.id === poId);
     if (!po) return;
 
@@ -2504,7 +2505,9 @@ export const App: React.FC = () => {
       : (po.quotes || []);
 
     const fallbackQuoteId = selectedQuoteId || po.selectedQuoteId || '';
-    const selectedMap = po.items.reduce<Record<string, string>>((acc, item) => {
+    const sourceItems = Array.isArray(itemsOverride) && itemsOverride.length > 0 ? itemsOverride : po.items;
+
+    const selectedMap = sourceItems.reduce<Record<string, string>>((acc, item) => {
       const quoteId = selectedQuoteIdByItem?.[item.sku] || item.selectedQuoteId || fallbackQuoteId;
       if (quoteId) acc[item.sku] = quoteId;
       return acc;
@@ -2519,7 +2522,7 @@ export const App: React.FC = () => {
     const selectedQuoteSet = new Set(selectedIds);
     const updatedQuotes = effectiveQuotes.map(q => ({ ...q, isSelected: selectedQuoteSet.has(q.id) }));
 
-    const updatedItems = po.items.map((item) => {
+    const updatedItems = sourceItems.map((item) => {
       const selectedItemQuoteId = selectedMap[item.sku] || '';
       const itemQuote = effectiveQuotes.find((quote) => quote.id === selectedItemQuoteId);
       const quoteItem = itemQuote?.items?.find((entry) => entry.sku === item.sku);
