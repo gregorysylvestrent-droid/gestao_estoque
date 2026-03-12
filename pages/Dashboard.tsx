@@ -148,8 +148,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, activities, pur
               {purchaseAgingByBuyer.length > 0 ? (
                 <div className="h-full flex items-end gap-2">
                   {purchaseAgingByBuyer.map((point) => (
-                    <div key={point.buyer} className="flex-1 min-w-0 flex flex-col justify-end items-center gap-2">
-                      <div className="w-full h-full rounded-xl bg-slate-100 border border-slate-200 p-1 flex items-end">
+                    <div key={point.buyer} className="flex-1 min-w-0 h-full flex flex-col items-center gap-2">
+                      <div className="w-full flex-1 rounded-xl bg-slate-100 border border-slate-200 p-1 flex items-end">
                         <div
                           className="w-full rounded-lg bg-gradient-to-t from-primary to-blue-300 transition-all duration-500"
                           style={{ height: `${Math.max(8, Math.round((point.count / maxBuyerCount) * 100))}%` }}
