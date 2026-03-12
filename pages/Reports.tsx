@@ -1,8 +1,22 @@
 
 import React, { useState, useMemo } from 'react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { PurchaseOrder } from '../types';
+import { PurchaseOrder, PurchaseOrderStatus, PO_STATUS_LABELS } from '../types';
 import { parseDateLike } from '../utils/dateTime';
+
+const SUPPLY_STATUS_FLOW: PurchaseOrderStatus[] = ['requisicao', 'cotacao', 'pendente', 'aprovado', 'enviado', 'recebido', 'cancelado'];
+
+const STATUS_VISUALS: Record<PurchaseOrderStatus, { color: string; bg: string; ring: string }> = {
+  rascunho: { color: 'text-slate-500', bg: 'bg-slate-500/10', ring: 'ring-slate-500/20' },
+  requisicao: { color: 'text-amber-500', bg: 'bg-amber-500/10', ring: 'ring-amber-500/20' },
+  cotacao: { color: 'text-blue-500', bg: 'bg-blue-500/10', ring: 'ring-blue-500/20' },
+  pendente: { color: 'text-purple-500', bg: 'bg-purple-500/10', ring: 'ring-purple-500/20' },
+  aprovado: { color: 'text-emerald-500', bg: 'bg-emerald-500/10', ring: 'ring-emerald-500/20' },
+  enviado: { color: 'text-indigo-500', bg: 'bg-indigo-500/10', ring: 'ring-indigo-500/20' },
+  recebido: { color: 'text-slate-600', bg: 'bg-slate-500/10', ring: 'ring-slate-500/20' },
+  cancelado: { color: 'text-red-500', bg: 'bg-red-500/10', ring: 'ring-red-500/20' }
+};
+
 
 const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders }) => {
   const [periodDays, setPeriodDays] = useState(30);
@@ -16,7 +30,8 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
     const activePOs = orders.filter(o => !['recebido', 'cancelado'].includes(o.status));
     const completedPOs = orders.filter(o => o.status === 'recebido');
     const canceledPOs = orders.filter(o => o.status === 'cancelado');
-    const pausedPOs = orders.filter(o => o.status === 'pendente');
+    const waitingApprovalPOs = orders.filter(o => o.status === 'pendente');
+    const sentPOs = orders.filter(o => o.status === 'enviado');
 
     const inFlux = activePOs.length;
     const finalizedTotal = completedPOs.length + canceledPOs.length;
@@ -28,6 +43,9 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
     const entered = ordersInPeriod.length;
     const finalizedInPeriod = ordersInPeriod.filter(o => o.status === 'recebido').length;
     const canceledInPeriod = ordersInPeriod.filter(o => o.status === 'cancelado').length;
+    const quotedInPeriod = ordersInPeriod.filter(o => o.status === 'cotacao').length;
+    const waitingApprovalInPeriod = ordersInPeriod.filter(o => o.status === 'pendente').length;
+    const sentInPeriod = ordersInPeriod.filter(o => o.status === 'enviado').length;
 
     const completedInPeriod = ordersInPeriod.filter(o => o.status === 'recebido' && o.receivedAt);
     const leadTimes = completedInPeriod.map(o => {
@@ -53,21 +71,33 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
         .slice(0, 5);
     };
 
+    const statusSummary = SUPPLY_STATUS_FLOW.map((status) => {
+      const statusOrders = orders.filter((order) => order.status === status);
+      return {
+        status,
+        label: PO_STATUS_LABELS[status],
+        orders: statusOrders,
+        value: statusOrders.length,
+        ...STATUS_VISUALS[status]
+      };
+    });
+
     return {
-      active: activePOs.length,
+      statusSummary,
       activeList: activePOs,
-      completed: completedPOs.length,
       completedList: completedPOs,
-      canceled: canceledPOs.length,
       canceledList: canceledPOs,
-      paused: pausedPOs.length,
-      pausedList: pausedPOs,
+      waitingApprovalList: waitingApprovalPOs,
+      sentList: sentPOs,
       inFlux,
       finalizedTotal,
       entered,
       enteredList: ordersInPeriod,
       finalizedInPeriod,
       canceledInPeriod,
+      quotedInPeriod,
+      waitingApprovalInPeriod,
+      sentInPeriod,
       avgLeadTime,
       itemsRequested,
       avgOrderValue,
@@ -87,13 +117,8 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
         <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-wider">Analytics de Suprimentos</h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: 'Ativos', value: stats.active, items: stats.activeList, color: 'text-blue-500', bg: 'bg-blue-500/10', ring: 'ring-blue-500/20' },
-          { label: 'Pausados', value: stats.paused, items: stats.pausedList, color: 'text-amber-500', bg: 'bg-amber-500/10', ring: 'ring-amber-500/20' },
-          { label: 'Cancelados', value: stats.canceled, items: stats.canceledList, color: 'text-red-500', bg: 'bg-red-500/10', ring: 'ring-red-500/20' },
-          { label: 'Concluídos', value: stats.completed, items: stats.completedList, color: 'text-emerald-500', bg: 'bg-emerald-500/10', ring: 'ring-emerald-500/20' },
-        ].map((item, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
+        {stats.statusSummary.map((item, i) => (
           <button
             key={i}
             onClick={() => setSelectedMetric({ label: item.label, orders: item.items })}
@@ -103,7 +128,7 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
             <div className={`size-12 rounded-2xl ${item.bg} ring-4 ${item.ring} flex items-center justify-center mb-4 z-10`}>
               <span className={`text-[10px] font-black ${item.color} uppercase tracking-tighter`}>{item.label.substring(0, 3)}</span>
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 z-10">Total {item.label}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 z-10">Status {item.label}</p>
             <h4 className="text-4xl font-black text-slate-800 dark:text-white z-10">{item.value}</h4>
             <div className="mt-4 px-4 py-1.5 bg-slate-50 dark:bg-slate-800/50 rounded-full opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 z-10">
               <span className="text-[8px] font-black text-primary uppercase tracking-widest">Explorar Dados</span>
@@ -118,9 +143,9 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
             onClick={() => setSelectedMetric({ label: 'Cards no Fluxo', orders: stats.activeList })}
             className="w-full group bg-white dark:bg-[#1a222c] p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm text-center transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
           >
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cards no Fluxo</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Fluxo Ativo de Suprimentos</p>
             <h4 className="text-5xl font-black text-slate-800 dark:text-white">{stats.inFlux}</h4>
-            <span className="text-[8px] font-black text-primary uppercase mt-2 tracking-widest opacity-50 group-hover:opacity-100">Click p/ Detalhes</span>
+            <span className="text-[8px] font-black text-primary uppercase mt-2 tracking-widest opacity-50 group-hover:opacity-100">Clique p/ Detalhes</span>
           </button>
           <button
             onClick={() => setSelectedMetric({ label: 'Cards Finalizados', orders: [...stats.completedList, ...stats.canceledList] })}
@@ -128,7 +153,7 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
           >
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cards Finalizados</p>
             <h4 className="text-5xl font-black text-slate-800 dark:text-white">{stats.finalizedTotal}</h4>
-            <span className="text-[8px] font-black text-primary uppercase mt-2 tracking-widest opacity-50 group-hover:opacity-100">Click p/ Detalhes</span>
+            <span className="text-[8px] font-black text-primary uppercase mt-2 tracking-widest opacity-50 group-hover:opacity-100">Clique p/ Detalhes</span>
           </button>
         </div>
 
@@ -216,6 +241,9 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
             { label: 'Cards Inseridos', value: stats.entered, items: stats.enteredList, color: 'bg-blue-500', help: 'Novos pedidos criados' },
             { label: 'Cards Finalizados', value: stats.finalizedInPeriod, items: stats.completedList.filter(o => stats.enteredList.includes(o)), color: 'bg-emerald-500', help: 'Pedidos recebidos' },
             { label: 'Cards Cancelados', value: stats.canceledInPeriod, items: stats.canceledList.filter(o => stats.enteredList.includes(o)), color: 'bg-red-500', help: 'Pedidos cancelados' },
+            { label: 'Em Cotação', value: stats.quotedInPeriod, items: stats.enteredList.filter(o => o.status === 'cotacao'), color: 'bg-blue-500', help: 'Negociação com fornecedores' },
+            { label: 'Aguardando Aprovação', value: stats.waitingApprovalInPeriod, items: stats.waitingApprovalList.filter(o => stats.enteredList.includes(o)), color: 'bg-purple-500', help: 'Pendente de gestor' },
+            { label: 'Enviados ao Fornecedor', value: stats.sentInPeriod, items: stats.sentList.filter(o => stats.enteredList.includes(o)), color: 'bg-indigo-500', help: 'Em processamento externo' },
             { label: 'Lead Time Médio', value: `${stats.avgLeadTime} d`, color: 'bg-amber-500', help: 'Média de ciclo' },
             { label: 'Itens Solicitados', value: stats.itemsRequested, color: 'bg-indigo-500', help: 'Soma de quantidades' },
             { label: 'Ticket Médio (PO)', value: stats.avgOrderValue, color: 'bg-violet-500', help: 'Valor médio p/ pedido' },
@@ -317,8 +345,8 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
                               </div>
                             </td>
                             <td className="px-4 py-4">
-                              <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter`}>
-                                {o.status}
+                              <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter border ${STATUS_VISUALS[o.status].bg} ${STATUS_VISUALS[o.status].color}`}>
+                                {PO_STATUS_LABELS[o.status] || o.status}
                               </span>
                             </td>
                           </tr>
