@@ -5210,6 +5210,7 @@ export const App: React.FC = () => {
                   <Dashboard
                     inventory={inventoryCatalog.length > 0 ? inventoryCatalog : inventory.filter(i => i.warehouseId === activeWarehouse)}
                     activities={activities}
+                    purchaseOrders={purchaseOrders.filter((po) => po.warehouseId === activeWarehouse)}
                   />
                 )}
                 {activeModule === 'recebimento' && (
@@ -5237,6 +5238,7 @@ export const App: React.FC = () => {
                     onUpdateItem={handleUpdateInventoryItem}
                     onCreateAutoPO={handleCreateAutoPO}
                     onRecalculateROP={handleRecalculateROP}
+                    userRole={user?.role}
                   />
                 )}
                 {activeModule === 'expedicao' && (

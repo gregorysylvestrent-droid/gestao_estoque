@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { InventoryItem, INVENTORY_STATUS_LABELS } from '../types';
+import { InventoryItem, INVENTORY_STATUS_LABELS, User } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import { PaginationBar } from '../components/PaginationBar';
 
@@ -8,9 +8,10 @@ interface InventoryProps {
   onUpdateItem?: (item: InventoryItem) => void;
   onCreateAutoPO?: (item: InventoryItem) => void;
   onRecalculateROP?: () => void;
+  userRole?: User['role'];
 }
 
-export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, onCreateAutoPO, onRecalculateROP }) => {
+export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, onCreateAutoPO, onRecalculateROP, userRole }) => {
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [isOpsModalOpen, setIsOpsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -22,11 +23,11 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
   const [leadTime, setLeadTime] = useState<number>(7);
   const [safetyStock, setSafetyStock] = useState<number>(5);
   const [calculatedStatus, setCalculatedStatus] = useState<InventoryItem['status']>('disponivel');
-  
+
   // Estados para paginacao
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 50; // Limite razoavel para renderizacao
-  
+
   // Estados para busca
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -75,8 +76,21 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
     }
   };
 
+
+
+  const canRecalculateROP = userRole === 'admin';
+
+  const handleRecalculateROPClick = () => {
+    if (!canRecalculateROP || !onRecalculateROP) return;
+
+    const confirmed = window.confirm('Deseja realmente recalcular o ROP Dinâmico agora?');
+    if (!confirmed) return;
+
+    onRecalculateROP();
+  };
+
   // Filtrar itens com base no termo de busca
-  const filteredItems = items.filter(item => 
+  const filteredItems = items.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.location?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -87,7 +101,7 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
   const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
   const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
-  
+
   // Resetar para a primeira pagina quando os itens mudarem ou a busca mudar
   useEffect(() => {
     setCurrentPage(1);
@@ -124,16 +138,18 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
             )}
           </div>
 
-          <button
-            onClick={onRecalculateROP}
-            className="px-6 py-3.5 bg-amber-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-amber-500/20 hover:bg-amber-600 transition-all active:scale-95 flex items-center gap-3"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-            </svg>
-            Recalcular ROP Dinâmico
-          </button>
+          {canRecalculateROP && (
+            <button
+              onClick={handleRecalculateROPClick}
+              className="px-6 py-3.5 bg-amber-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-amber-500/20 hover:bg-amber-600 transition-all active:scale-95 flex items-center gap-3"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+              </svg>
+              Recalcular ROP Dinâmico
+            </button>
+          )}
         </div>
       </div>
 
@@ -231,7 +247,7 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
             </tbody>
           </table>
         </div>
-        
+
         {filteredItems.length > ITEMS_PER_PAGE && (
           <div className="border-t border-slate-100 dark:border-slate-800">
             <PaginationBar

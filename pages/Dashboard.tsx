@@ -1,9 +1,12 @@
 ﻿import React, { useMemo } from 'react';
-import { InventoryItem, Activity } from '../types';
+import * as XLSX from 'xlsx';
+import { InventoryItem, Activity, PurchaseOrder } from '../types';
+import { parseDateLike } from '../utils/dateTime';
 
 interface DashboardProps {
   inventory: InventoryItem[];
   activities: Activity[];
+  purchaseOrders: PurchaseOrder[];
 }
 
 const KPI_IMAGES = {
@@ -13,7 +16,12 @@ const KPI_IMAGES = {
   acuracidade: 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaad5b?w=400&q=80',
 };
 
-export const Dashboard: React.FC<DashboardProps> = ({ inventory, activities }) => {
+const getBuyerFromApprovalHistory = (order: PurchaseOrder) => {
+  const requisitionEntry = (order.approvalHistory || []).find((entry) => entry?.status === 'requisicao' && String(entry?.by || '').trim().length > 0);
+  return String(requisitionEntry?.by || '').trim() || 'Não identificado';
+};
+
+export const Dashboard: React.FC<DashboardProps> = ({ inventory, activities, purchaseOrders }) => {
   const toPositiveNumber = (value: unknown) => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return 0;
@@ -35,24 +43,62 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, activities }) =
     { label: 'Acuracidade', value: '99,8%', bg: KPI_IMAGES.acuracidade },
   ];
 
-  const throughputSeries = useMemo(() => {
-    const bucketSize = 8;
-    const recentActivities = activities.slice(0, 64);
-    const buckets = new Array<number>(bucketSize).fill(0);
+  const latestActivities = useMemo(() => activities.slice(0, 5), [activities]);
+  const criticalItemsPreview = useMemo(() => criticalItems.slice(0, 10), [criticalItems]);
 
-    recentActivities.forEach((activity, index) => {
-      const bucket = index % bucketSize;
-      const intensityBonus = activity.type === 'recebimento' || activity.type === 'expedicao' ? 2 : 1;
-      buckets[bucket] += intensityBonus;
-    });
+  const purchaseAgingByBuyer = useMemo(() => {
+    const now = new Date();
+    const pendingOrders = purchaseOrders.filter((order) => order.status === 'requisicao');
 
-    return buckets.map((value, index) => ({
-      label: `Janela ${index + 1}`,
-      value: value > 0 ? value : 1,
+    type BuyerAgingMetrics = { count: number; totalAgingDays: number; maxAgingDays: number };
+    const grouped: Record<string, BuyerAgingMetrics> = pendingOrders.reduce((acc, order) => {
+      const buyer = getBuyerFromApprovalHistory(order);
+      const createdAt = parseDateLike(order.requestDate) || new Date(order.requestDate);
+      const isValidDate = Number.isFinite(createdAt?.getTime?.());
+      const agingDays = isValidDate ? Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+
+      if (!acc[buyer]) {
+        acc[buyer] = { count: 0, totalAgingDays: 0, maxAgingDays: 0 };
+      }
+
+      acc[buyer].count += 1;
+      acc[buyer].totalAgingDays += agingDays;
+      acc[buyer].maxAgingDays = Math.max(acc[buyer].maxAgingDays, agingDays);
+      return acc;
+    }, {} as Record<string, BuyerAgingMetrics>);
+
+    return Object.entries(grouped)
+      .map(([buyer, metrics]) => ({
+        buyer,
+        count: metrics.count,
+        avgAgingDays: metrics.count > 0 ? Number((metrics.totalAgingDays / metrics.count).toFixed(1)) : 0,
+        maxAgingDays: metrics.maxAgingDays,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [purchaseOrders]);
+
+  const maxBuyerCount = Math.max(...purchaseAgingByBuyer.map((item) => item.count), 1);
+
+  const handleExportCriticalItems = () => {
+    if (criticalItems.length === 0) return;
+
+    const exportRows = criticalItems.map((item) => ({
+      SKU: item.sku,
+      Produto: item.name,
+      Saldo: item.quantity,
+      Unidade: item.unit || 'UN',
+      Minimo: item.minQty,
+      Maximo: item.maxQty,
+      Localizacao: item.location || '-',
+      Armazem: item.warehouseId || '-',
+      Status: item.status,
     }));
-  }, [activities]);
 
-  const maxThroughput = Math.max(...throughputSeries.map((point) => point.value), 1);
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Estoque Critico');
+    XLSX.writeFile(workbook, `estoque-critico-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   return (
     <div className="space-y-8">
@@ -93,25 +139,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, activities }) =
           <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200/60 dark:border-slate-800 shadow-sm">
             <div className="flex items-center justify-between mb-8 lg:mb-10">
               <div>
-                <h3 className="text-lg lg:text-xl font-black tracking-tight text-slate-800 dark:text-white">Vazão de Operações</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Throughput em tempo real</p>
+                <h3 className="text-lg lg:text-xl font-black tracking-tight text-slate-800 dark:text-white">Aging de Pedidos de Compra (Pendente)</h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Quantidade e envelhecimento por comprador responsável</p>
               </div>
             </div>
 
             <div className="h-[250px] lg:h-[300px] rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-              <div className="h-full flex items-end gap-2">
-                {throughputSeries.map((point) => (
-                  <div key={point.label} className="flex-1 min-w-0 flex flex-col justify-end items-center gap-2">
-                    <div className="w-full h-full rounded-xl bg-slate-100 border border-slate-200 p-1 flex items-end">
-                      <div
-                        className="w-full rounded-lg bg-gradient-to-t from-primary to-blue-300 transition-all duration-500"
-                        style={{ height: `${Math.max(8, Math.round((point.value / maxThroughput) * 100))}%` }}
-                      />
+              {purchaseAgingByBuyer.length > 0 ? (
+                <div className="h-full flex items-end gap-2">
+                  {purchaseAgingByBuyer.map((point) => (
+                    <div key={point.buyer} className="flex-1 min-w-0 flex flex-col justify-end items-center gap-2">
+                      <div className="w-full h-full rounded-xl bg-slate-100 border border-slate-200 p-1 flex items-end">
+                        <div
+                          className="w-full rounded-lg bg-gradient-to-t from-primary to-blue-300 transition-all duration-500"
+                          style={{ height: `${Math.max(8, Math.round((point.count / maxBuyerCount) * 100))}%` }}
+                          title={`${point.buyer}: ${point.count} pedidos | Aging médio ${point.avgAgingDays}d`}
+                        />
+                      </div>
+                      <span className="text-[9px] font-black uppercase text-slate-400 whitespace-nowrap max-w-full truncate">{point.buyer}</span>
+                      <span className="text-[9px] font-black uppercase text-primary whitespace-nowrap">{point.count} PO</span>
                     </div>
-                    <span className="text-[9px] font-black uppercase text-slate-400 whitespace-nowrap">{point.label}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs font-black text-slate-400 uppercase tracking-widest">
+                  Sem pedidos pendentes para análise de aging
+                </div>
+              )}
             </div>
           </div>
 
@@ -120,8 +174,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, activities }) =
               <h3 className="text-lg font-black flex items-center gap-3 text-slate-800 dark:text-white">Feed de Atividades Reais</h3>
             </div>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {activities.length > 0 ? (
-                activities.map((act) => (
+              {latestActivities.length > 0 ? (
+                latestActivities.map((act) => (
                   <div
                     key={act.id}
                     className="p-6 flex items-center gap-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all cursor-pointer group"
@@ -142,8 +196,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, activities }) =
 
         <div className="lg:col-span-4 space-y-8">
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
+            <div className="flex items-start justify-between mb-8 gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <h3 className="text-lg font-black tracking-tight text-slate-800 dark:text-white">Estoque Crítico</h3>
                 {criticalItems.length > 0 && (
                   <span className="flex items-center justify-center bg-red-500 text-white text-[12px] font-black px-4 py-1.5 rounded-full animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.4)] border-2 border-white dark:border-slate-800 translate-y-[-2px]">
@@ -151,9 +205,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, activities }) =
                   </span>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={handleExportCriticalItems}
+                disabled={criticalItems.length === 0}
+                className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${criticalItems.length === 0 ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600'}`}
+              >
+                Exportar Excel
+              </button>
             </div>
             <div className="space-y-4">
-              {criticalItems.map((item, i) => (
+              {criticalItemsPreview.length > 0 ? criticalItemsPreview.map((item, i) => (
                 <div key={i} className="p-5 rounded-3xl border border-red-100 bg-red-50/30 dark:bg-red-900/10 dark:border-red-900/30">
                   <p className="text-base font-black uppercase pr-2 leading-tight text-slate-800 dark:text-white truncate">{item.name}</p>
                   <div className="mt-2 flex items-center justify-between text-[10px] font-black uppercase text-slate-400">
@@ -163,7 +225,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, activities }) =
                     <span>Mín: {item.minQty} {item.unit || 'UN'}</span>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="p-8 rounded-2xl border border-slate-200 bg-slate-50 text-center text-xs font-black uppercase tracking-widest text-slate-400">
+                  Sem itens críticos no momento
+                </div>
+              )}
             </div>
           </div>
 
