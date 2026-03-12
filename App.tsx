@@ -2151,6 +2151,10 @@ export const App: React.FC = () => {
   };
 
   const evaluateStockLevels = async (updatedInventory: InventoryItem[]) => {
+    // Rotina automática desabilitada: pedidos de compra para estoque crítico
+    // devem ser gerados apenas de forma manual.
+    return;
+
     for (const item of updatedInventory) {
       if (item.quantity < item.minQty) {
         const alreadyRequested = purchaseOrders.some(po =>
