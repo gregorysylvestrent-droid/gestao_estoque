@@ -1,80 +1,128 @@
 BEGIN;
 SET client_encoding = 'UTF8';
 UPDATE purchase_orders 
-SET quotes =
+SET items =
 '[
     {
-        "id": "Q-082923 - 01-1772203787911",
-        "items": [
-            {
-                "sku": "7469",
-                "leadTime": "7 dias",
-                "unitPrice": 3000
-            }
-        ],
-        "notes": "REPARO DA TURBINA",
-        "quotedAt": "27/02/2026, 11:49:47",
-        "quotedBy": "Gregory Sylvestre",
-        "vendorId": "082923 - 01",
-        "isSelected": true,
-        "totalValue": 3000,
-        "validUntil": "2026-03-06",
-        "vendorName": "J. P. DA SILVA"
+      "qty": 10,
+      "sku": "0000160",
+      "name": "BARRA AXIAL DIREÇAO PARA FIAT NOVA STRADA 2021 2022 2023",
+      "price": 0
     },
     {
-        "id": "Q-001279 - 01-1772203787912",
-        "items": [
-            {
-                "sku": "7469",
-                "leadTime": "7 dias",
-                "unitPrice": 14677.77
-            }
-        ],
-        "notes": "TURBINA NOVA 30 DIAS PARA CHEGAR",
-        "quotedAt": "27/02/2026, 11:49:47",
-        "quotedBy": "Gregory Sylvestre",
-        "vendorId": "001279 - 01",
-        "isSelected": false,
-        "totalValue": 14677.77,
-        "validUntil": "2026-03-26",
-        "vendorName": "TOYOLEX AUTOS LTDA"
+      "qty": 10,
+      "sku": "0000161",
+      "name": "PAR TERMINAL AXIAL DIANTEIRO NOVO UNO PALIO GRAND SIENA MOBI",
+      "price": 0
     },
     {
-        "id": "Q-089532 - 01-1772203787913",
-        "items": [
-            {
-                "sku": "7469",
-                "leadTime": "7 dias",
-                "unitPrice": 6500
-            }
-        ],
-        "notes": "SUCATA | SUCATÃO",
-        "quotedAt": "27/02/2026, 11:49:47",
-        "quotedBy": "Gregory Sylvestre",
-        "vendorId": "089532 - 01",
-        "isSelected": false,
-        "totalValue": 6500,
-        "validUntil": "2026-02-26",
-        "vendorName": "B. L. TELES MARQUES LTDA"
+      "qty": 8,
+      "sku": "0000162",
+      "name": "COXIM MOTOR DIREITO NOVA STRADA 1.3 8V FLEX 4 CIL 2020 2025",
+      "price": 0
     },
     {
-        "id": "Q-087525 - 01-1772203787914",
-        "items": [
-            {
-                "sku": "16336",
-                "leadTime": "7 dias",
-                "unitPrice": 120
-            }
-        ],
-        "notes": "",
-        "quotedAt": "27/02/2026, 11:49:47",
-        "quotedBy": "Gregory Sylvestre",
-        "vendorId": "087525 - 01",
-        "isSelected": true,
-        "totalValue": 120,
-        "validUntil": "29/03/2026",
-        "vendorName": "LUMI COMERCIO VAREJISTA DE PECAS AUTOMOTIVO LTDA"
+      "qty": 10,
+      "sku": "0000163",
+      "name": "PIVO SUSPENSÃO DIANTEIRA LD STRADA 1.3/1.4 8V APÓS 2021",
+      "price": 0
+    },
+    {
+      "qty": 10,
+      "sku": "0000164",
+      "name": "PIVO SUSPENSÃO DIANTEIRA LE STRADA 1.3/1.4 8V APÓS 2021",
+      "price": 0
+    },
+    {
+      "qty": 8,
+      "sku": "0000165",
+      "name": "CUBO RODA DIANTEIRO COM ROLAMENTOS S10 TRAILBLAZER 2017-2024",
+      "price": 0
+    },
+    {
+      "qty": 6,
+      "sku": "0000166",
+      "name": "VENTILADOR DE CABINE CX EVAPORADORA VW GOL G5 G6, SAVEIRO",
+      "price": 0
+    },
+    {
+      "qty": 1,
+      "sku": "0000167",
+      "name": "MOTOR VENTILADOR AR CONDICIONADO S10 / BLAZER 2019 2020 2021",
+      "price": 0
+    },
+    {
+      "qty": 6,
+      "sku": "0000168",
+      "name": "5 POLIAS DA CORREIA ALTERNADOR S10 2.8 C/ DIR-ELÉTRICA 2021 EM DIANTE",
+      "price": 0
+    },
+    {
+      "qty": 5,
+      "sku": "0000169",
+      "name": "RETENTOR COMANDO VÁLVULA VW 1.6 POWER 8V SAVEIRO",
+      "price": 0
+    },
+    {
+      "qty": 5,
+      "sku": "0000170",
+      "name": "RETENTOR + SELO COMANDO DE VÁLVULAS NOVA S10 2.8 2019 2020",
+      "price": 0
+    },
+    {
+      "qty": 5,
+      "sku": "0000171",
+      "name": "RETENTOR VIRABREQUIM S10/TRAILBLAZER 2.8 16V 12/ SABÓ 5831",
+      "price": 0
+    },
+    {
+      "qty": 5,
+      "sku": "0000172",
+      "name": "SENSOR DE PRESSÃO DE ÓLEO 0,3-0,6 BAR - ORIGINAL VW SAVEIRO G5 G6 G7 1.0 1.6",
+      "price": 0
+    },
+    {
+      "qty": 5,
+      "sku": "0000173",
+      "name": "JUNTA DA TAMPA DE VÁLVULAS FIAT MOBI MOTOR EVO TAMPA DE ALUMÍNIO 1.0",
+      "price": 0
+    },
+    {
+      "qty": 5,
+      "sku": "0000174",
+      "name": "JUNTA CABEÇOTE FIAT STRADA 1.4 2021-2025 EVO",
+      "price": 0
+    },
+    {
+      "qty": 6,
+      "sku": "0000175",
+      "name": "JUNTAS DESLIZANTE BOLACHÃO DO CÂMBIO SAVEIRO 1.6",
+      "price": 0
+    },
+    {
+      "qty": 3,
+      "sku": "0000153",
+      "name": "ATUADOR DA EMBREAGEM - RANGER",
+      "price": 0
+    },
+    {
+      "qty": 8,
+      "sku": "0000098",
+      "name": "ROLAMENTO DIANTEIRO COMPLETO C/ ROLAMENTO HILUX",
+      "price": 0
+    },
+    {
+      "qty": 8,
+      "sku": "17213",
+      "name": "BRAÇO ARTICULA. AXIAL D. HIDRAU - PALIO/STRADA/ANO 10(...)",
+      "price": 0
+    },
+    {
+      "qty": 10,
+      "sku": "0000043",
+      "name": "JUNTA DA TAMPA DE VALVULAS FIAT STRADA MOTOR EVO 1.0 1.3 1.4",
+      "price": 0
     }
-]'::jsonb
-WHERE id = 'PO-2026-878';
+  ]'
+WHERE id = 'PO-2026-8358';
 COMMIT;
