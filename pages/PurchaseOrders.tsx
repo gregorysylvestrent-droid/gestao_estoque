@@ -61,6 +61,21 @@ const getBuyerFromApprovalHistory = (order: PurchaseOrder) => {
   return String(requisitionEntry?.by || '').trim();
 };
 
+const SUPERVISOR_APPROVAL_LIMIT = 5000;
+
+const canUserApproveOrderByRole = (order: PurchaseOrder, role: User['role']) => {
+  if (role === 'admin') return true;
+  const total = Number(order.total || 0);
+  if (role === 'manager') return total >= SUPERVISOR_APPROVAL_LIMIT;
+  if (role === 'mechanic_supervisor' || role === 'fleet_supervisor') return total < SUPERVISOR_APPROVAL_LIMIT;
+  return false;
+};
+
+const shouldOrderBeVisibleForRole = (order: PurchaseOrder, role: User['role']) => {
+  if (role !== 'manager') return true;
+  return order.status === 'pendente' && Number(order.total || 0) >= SUPERVISOR_APPROVAL_LIMIT;
+};
+
 const StatusProgressBar: React.FC<{ order: PurchaseOrder; onPrint?: () => void }> = ({ order, onPrint }) => {
   const { status } = order;
 
@@ -539,6 +554,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     const buyerFilter = normalize(poBuyerFilter);
 
     const baseOrders = orders.filter((order) => {
+      if (!shouldOrderBeVisibleForRole(order, user.role)) return false;
       const itemsJoined = (order.items || [])
         .map((item) => `${item.name || ''} ${item.sku || ''}`)
         .join(' | ');
@@ -591,7 +607,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       };
       return valueA[poSortKey].localeCompare(valueB[poSortKey], 'pt-BR', { numeric: true }) * factor;
     });
-  }, [orders, poSearch, poPlateFilter, poCostCenterFilter, poStatusFilter, poRequesterFilter, poBuyerFilter, poSortKey, poSortDirection]);
+  }, [orders, user.role, poSearch, poPlateFilter, poCostCenterFilter, poStatusFilter, poRequesterFilter, poBuyerFilter, poSortKey, poSortDirection]);
 
   const paginatedFilteredOrders = useMemo(() => {
     const startIndex = Math.max(0, (currentPage - 1) * pageSize);
@@ -2305,7 +2321,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
 
                         {/* Botões de Aprovação/Rejeição - apenas para status pendente e perfis aprovadores */}
                         {
-                          order.status === 'pendente' && canApprovePurchaseOrders && (
+                          order.status === 'pendente' && canApprovePurchaseOrders && canUserApproveOrderByRole(order, user.role) && (
                             <>
                               <button
                                 onClick={() => setRejectionOrderId(order.id)}
@@ -2850,7 +2866,12 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                           Rejeitar
                         </button>
                         <button
+                          disabled={!canUserApproveOrderByRole(quotingPO, user.role)}
                           onClick={async () => {
+                            if (!canUserApproveOrderByRole(quotingPO, user.role)) {
+                              alert('Este pedido está fora da sua alçada de aprovação.');
+                              return;
+                            }
                             const selectedQuoteIds = quotingPO.items
                               .map((item) => selectedQuoteIdByItem[item.sku])
                               .filter(Boolean);
@@ -2870,7 +2891,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                             resetQuotationForm();
                           }
                           }
-                          className="px-8 py-3 bg-green-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-green-500/20 hover:bg-green-600 transition-all active:scale-95"
+                          className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 ${canUserApproveOrderByRole(quotingPO, user.role) ? 'bg-green-500 text-white shadow-green-500/20 hover:bg-green-600' : 'bg-slate-200 text-slate-400 shadow-none cursor-not-allowed'}`}
                         >
                           Aprovar Agora
                         </button>

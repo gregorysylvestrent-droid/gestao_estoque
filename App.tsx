@@ -2214,9 +2214,37 @@ export const App: React.FC = () => {
     }
   };
 
+  const SUPERVISOR_APPROVAL_LIMIT = 5000;
+
+  const canUserApprovePurchaseOrder = (order: PurchaseOrder, role?: User['role']) => {
+    if (!role) return false;
+    if (role === 'admin') return true;
+
+    const total = Number(order.total || 0);
+    if (role === 'manager') return total >= SUPERVISOR_APPROVAL_LIMIT;
+    if (role === 'mechanic_supervisor' || role === 'fleet_supervisor') return total < SUPERVISOR_APPROVAL_LIMIT;
+
+    return false;
+  };
+
   const handleApprovePO = async (id: string) => {
     const po = purchaseOrders.find(o => o.id === id);
     if (!po) return;
+
+    if (po.status !== 'pendente') {
+      showNotification('Somente pedidos pendentes podem ser aprovados.', 'warning');
+      return;
+    }
+
+    if (!canUserApprovePurchaseOrder(po, user?.role)) {
+      const poTotal = Number(po.total || 0);
+      if (poTotal >= SUPERVISOR_APPROVAL_LIMIT) {
+        showNotification('Este pedido exige aprovação de coordenador/gerente.', 'warning');
+      } else {
+        showNotification('Este pedido está fora da sua alçada de aprovação.', 'warning');
+      }
+      return;
+    }
 
     const approvedAtIso = nowIso();
     const approvedAtDisplay = toPtBrDateTime(approvedAtIso, formatDateTimePtBR(new Date(), ''));
