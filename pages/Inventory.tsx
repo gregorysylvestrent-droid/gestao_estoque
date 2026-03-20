@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { InventoryItem, INVENTORY_STATUS_LABELS, User } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import { PaginationBar } from '../components/PaginationBar';
@@ -80,6 +81,34 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
 
   const canRecalculateROP = userRole === 'admin';
 
+  const handleExportToExcel = () => {
+    if (filteredItems.length === 0) {
+      window.alert('Não há itens para exportar no filtro atual.');
+      return;
+    }
+
+    const rows = filteredItems.map((item) => ({
+      SKU: item.sku,
+      Produto: item.name,
+      Saldo: item.quantity,
+      Unidade: item.unit || 'UN',
+      Minimo: item.minQty,
+      Maximo: item.maxQty,
+      LeadTimeDias: item.leadTime || 0,
+      EstoqueSeguranca: item.safetyStock || 0,
+      Localizacao: item.location || '-',
+      Status: INVENTORY_STATUS_LABELS[item.status],
+      Armazem: item.warehouseId || '-',
+      UltimaMovimentacao: item.lastMovementDate || '-',
+      Validade: item.expiry || '-',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Estoque');
+    XLSX.writeFile(workbook, `estoque-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const handleRecalculateROPClick = () => {
     if (!canRecalculateROP || !onRecalculateROP) return;
 
@@ -116,6 +145,18 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={handleExportToExcel}
+            className="px-5 py-3 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.14em] shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <path d="M7 10l5 5 5-5" />
+              <path d="M12 15V3" />
+            </svg>
+            Extrair para Excel
+          </button>
+
           {/* Campo de busca */}
           <div className="relative">
             <input
@@ -137,7 +178,7 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
               </button>
             )}
           </div>
-{/*
+          {/*
           {canRecalculateROP && (
             <button
               onClick={handleRecalculateROPClick}
@@ -431,4 +472,3 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
     </div>
   );
 };
-
