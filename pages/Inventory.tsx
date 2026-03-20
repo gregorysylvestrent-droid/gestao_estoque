@@ -137,7 +137,7 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
               </button>
             )}
           </div>
-
+{/*
           {canRecalculateROP && (
             <button
               onClick={handleRecalculateROPClick}
@@ -150,6 +150,7 @@ export const Inventory: React.FC<InventoryProps> = ({ items = [], onUpdateItem, 
               Recalcular ROP Dinâmico
             </button>
           )}
+*/}
         </div>
       </div>
 
