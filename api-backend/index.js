@@ -2168,6 +2168,229 @@ app.get('/audit_logs/search', authenticate, async (req, res) => {
   }
 });
 
+app.post('/purchase_orders/restore_from_audit', authenticate, async (req, res) => {
+  const actor = String(req.auth?.email || req.auth?.sub || 'Sistema');
+  const actorId = req.auth?.sub ? String(req.auth.sub) : null;
+  const actorRole = String(req.auth?.role || '').toLowerCase();
+
+  if (actorRole !== 'admin') {
+    res.status(403).json({ data: null, error: 'Apenas administradores podem restaurar pedidos de compra.' });
+    return;
+  }
+
+  const requestedIds = Array.isArray(req.body?.audit_log_ids) ? req.body.audit_log_ids : [];
+  const auditLogIds = [...new Set(requestedIds.map((id) => String(id || '').trim()).filter(Boolean))];
+
+  if (auditLogIds.length === 0) {
+    res.status(400).json({ data: null, error: 'Informe ao menos um ID de log de auditoria para restauracao.' });
+    return;
+  }
+
+  const parseBeforeData = (value) => {
+    if (!value) return null;
+    if (typeof value === 'object') return value;
+    if (typeof value !== 'string') return null;
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const isRestorableAuditRow = (row) =>
+    row &&
+    String(row.entity || '') === 'purchase_orders' &&
+    String(row.action || '').toLowerCase() === 'delete' &&
+    parseBeforeData(row.before_data) &&
+    String(parseBeforeData(row.before_data)?.id || '').trim().length > 0;
+
+  if (!dbConnected) {
+    const auditRows = normalizeRowsByTable('audit_logs', readJson('audit_logs'));
+    const rowById = new Map(auditRows.map((row) => [String(row?.id || ''), row]));
+    const purchaseOrders = normalizeRowsByTable('purchase_orders', readJson('purchase_orders'));
+    const purchaseOrderById = new Map(purchaseOrders.map((row) => [String(row?.id || ''), row]));
+
+    const restored = [];
+    const skipped = [];
+    const notFound = [];
+    const auditEntries = [];
+
+    for (const auditLogId of auditLogIds) {
+      const auditRow = rowById.get(auditLogId);
+      if (!auditRow) {
+        notFound.push({ audit_log_id: auditLogId, reason: 'audit_log_not_found' });
+        continue;
+      }
+      if (!isRestorableAuditRow(auditRow)) {
+        skipped.push({ audit_log_id: auditLogId, reason: 'audit_log_not_restorable' });
+        continue;
+      }
+
+      const beforeData = normalizeRowsByTable('purchase_orders', [parseBeforeData(auditRow.before_data)])[0];
+      const poId = String(beforeData?.id || '').trim();
+      if (!poId) {
+        skipped.push({ audit_log_id: auditLogId, reason: 'missing_purchase_order_id' });
+        continue;
+      }
+      if (purchaseOrderById.has(poId)) {
+        skipped.push({ audit_log_id: auditLogId, purchase_order_id: poId, reason: 'purchase_order_already_exists' });
+        continue;
+      }
+
+      purchaseOrders.push(beforeData);
+      purchaseOrderById.set(poId, beforeData);
+      restored.push(beforeData);
+      auditEntries.push(
+        buildAuditLog({
+          module: 'purchase_orders',
+          action: 'restore',
+          entity: 'purchase_orders',
+          entityId: poId,
+          actor,
+          actorId,
+          warehouseId: beforeData?.warehouse_id || null,
+          beforeData: null,
+          afterData: beforeData,
+          meta: {
+            restored_from_audit_log_id: auditLogId,
+            source_action: auditRow.action,
+            source_created_at: auditRow.created_at || null,
+            mode: 'json',
+          },
+        })
+      );
+    }
+
+    if (restored.length > 0) {
+      writeJson('purchase_orders', purchaseOrders);
+      await persistAuditLogs(auditEntries);
+    }
+
+    res.json({
+      data: {
+        restored: sanitizeResponse(restored),
+        restored_count: restored.length,
+        skipped,
+        not_found: notFound,
+      },
+      error: null,
+    });
+    return;
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+    await setDbAuditContext(client, { actor, actorId, module: 'purchase_orders' });
+
+    const auditQuery = await client.query(
+      `
+        SELECT *
+        FROM audit_logs
+        WHERE id::text = ANY($1::text[])
+      `,
+      [auditLogIds]
+    );
+    const auditRows = normalizeRowsByTable('audit_logs', auditQuery.rows);
+    const rowById = new Map(auditRows.map((row) => [String(row?.id || ''), row]));
+
+    const restored = [];
+    const skipped = [];
+    const notFound = [];
+    const restoreAuditEntries = [];
+
+    for (const auditLogId of auditLogIds) {
+      const auditRow = rowById.get(auditLogId);
+      if (!auditRow) {
+        notFound.push({ audit_log_id: auditLogId, reason: 'audit_log_not_found' });
+        continue;
+      }
+      if (!isRestorableAuditRow(auditRow)) {
+        skipped.push({ audit_log_id: auditLogId, reason: 'audit_log_not_restorable' });
+        continue;
+      }
+
+      const beforeData = normalizeRowsByTable('purchase_orders', [parseBeforeData(auditRow.before_data)])[0];
+      const poId = String(beforeData?.id || '').trim();
+      if (!poId) {
+        skipped.push({ audit_log_id: auditLogId, reason: 'missing_purchase_order_id' });
+        continue;
+      }
+
+      const insertPayload = normalizeRowForDb('purchase_orders', beforeData);
+      const columns = Object.keys(insertPayload);
+      const values = Object.values(insertPayload);
+      const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
+
+      const restoreResult = await client.query(
+        `
+          INSERT INTO purchase_orders (${columns.join(', ')})
+          VALUES (${placeholders})
+          ON CONFLICT (id) DO NOTHING
+          RETURNING *
+        `,
+        values
+      );
+
+      if (restoreResult.rows.length === 0) {
+        skipped.push({ audit_log_id: auditLogId, purchase_order_id: poId, reason: 'purchase_order_already_exists' });
+        continue;
+      }
+
+      const restoredRow = normalizeRowsByTable('purchase_orders', restoreResult.rows)[0];
+      restored.push(restoredRow);
+      restoreAuditEntries.push(
+        buildAuditLog({
+          module: 'purchase_orders',
+          action: 'restore',
+          entity: 'purchase_orders',
+          entityId: poId,
+          actor,
+          actorId,
+          warehouseId: restoredRow?.warehouse_id || null,
+          beforeData: null,
+          afterData: restoredRow,
+          meta: {
+            restored_from_audit_log_id: auditLogId,
+            source_action: auditRow.action,
+            source_created_at: auditRow.created_at || null,
+            mode: 'db',
+          },
+        })
+      );
+    }
+
+    if (restoreAuditEntries.length > 0) {
+      await persistAuditLogs(restoreAuditEntries, client);
+    }
+
+    await client.query('COMMIT');
+    res.json({
+      data: {
+        restored: sanitizeResponse(restored),
+        restored_count: restored.length,
+        skipped,
+        not_found: notFound,
+      },
+      error: null,
+    });
+  } catch (err) {
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        // noop
+      }
+    }
+    markDbDisconnectedIfNeeded(err);
+    sendServerError(res, err, 'Falha ao restaurar pedidos de compra');
+  } finally {
+    if (client) client.release();
+  }
+});
+
 app.get('/:table/count', authenticate, async (req, res) => {
   const { table } = req.params;
   const sourceModule = getSourceModuleFromRequest(req);

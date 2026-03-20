@@ -58,6 +58,7 @@ const ACTION_STYLES: Record<string, string> = {
   create: 'bg-emerald-100 text-emerald-700',
   update: 'bg-blue-100 text-blue-700',
   delete: 'bg-red-100 text-red-700',
+  restore: 'bg-teal-100 text-teal-700',
   receipt_finalize: 'bg-amber-100 text-amber-700',
   inventory_increment: 'bg-purple-100 text-purple-700',
 };
@@ -66,6 +67,7 @@ const ACTION_LABELS: Record<string, string> = {
   create: 'Criação',
   update: 'Atualização',
   delete: 'Exclusão',
+  restore: 'Restauração',
   receipt_finalize: 'Finalização de Recebimento',
   inventory_increment: 'Incremento de Estoque',
 };
@@ -262,6 +264,8 @@ export const GeneralAudit: React.FC<GeneralAuditProps> = ({ activeWarehouse }) =
   const [hasNextPage, setHasNextPage] = useState(false);
   const [totalRows, setTotalRows] = useState(0);
   const [selectedRow, setSelectedRow] = useState<AuditLogEntry | null>(null);
+  const [selectedRestoreLogIds, setSelectedRestoreLogIds] = useState<string[]>([]);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const [draftFilters, setDraftFilters] = useState<AuditFilters>(() => createInitialFilters(activeWarehouse));
   const [filters, setFilters] = useState<AuditFilters>(() => createInitialFilters(activeWarehouse));
@@ -375,6 +379,36 @@ export const GeneralAudit: React.FC<GeneralAuditProps> = ({ activeWarehouse }) =
     };
   }, [currentPage, filters]);
 
+  const parseBeforeData = (value: unknown) => {
+    if (!value) return null;
+    if (typeof value === 'object') return value as Record<string, unknown>;
+    if (typeof value !== 'string') return null;
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const isRestorablePurchaseOrderLog = (row: AuditLogEntry) => {
+    if (String(row.entity || '') !== 'purchase_orders') return false;
+    if (String(row.action || '').toLowerCase() !== 'delete') return false;
+    const beforeData = parseBeforeData(row.before_data);
+    return Boolean(beforeData && String(beforeData.id || '').trim());
+  };
+
+  const restorableRowsOnPage = useMemo(
+    () => rows.filter((row) => isRestorablePurchaseOrderLog(row)),
+    [rows]
+  );
+
+  const selectedRestorableRowsOnPage = useMemo(
+    () =>
+      restorableRowsOnPage.filter((row) => selectedRestoreLogIds.includes(String(row.id || ''))),
+    [restorableRowsOnPage, selectedRestoreLogIds]
+  );
+
   const handleApplyFilters = () => {
     setCurrentPage(1);
     setFilters({
@@ -391,6 +425,59 @@ export const GeneralAudit: React.FC<GeneralAuditProps> = ({ activeWarehouse }) =
     setDraftFilters(next);
     setFilters(next);
     setCurrentPage(1);
+    setSelectedRestoreLogIds([]);
+  };
+
+  const toggleRestoreSelection = (rowId: string) => {
+    setSelectedRestoreLogIds((prev) => {
+      if (prev.includes(rowId)) return prev.filter((id) => id !== rowId);
+      return [...prev, rowId];
+    });
+  };
+
+  const toggleSelectAllRestorableOnPage = () => {
+    const restorableIds = restorableRowsOnPage.map((row) => String(row.id || ''));
+    setSelectedRestoreLogIds((prev) => {
+      const alreadyAllSelected = restorableIds.length > 0 && restorableIds.every((id) => prev.includes(id));
+      if (alreadyAllSelected) {
+        return prev.filter((id) => !restorableIds.includes(id));
+      }
+      return [...new Set([...prev, ...restorableIds])];
+    });
+  };
+
+  const handleRestoreSelected = async () => {
+    if (selectedRestoreLogIds.length === 0) return;
+
+    setIsRestoring(true);
+    setError('');
+    setNotice('');
+
+    try {
+      const response = await api.from('purchase_orders/restore_from_audit').insert({
+        audit_log_ids: selectedRestoreLogIds,
+      });
+
+      if (response?.error) {
+        setError(`Falha ao restaurar pedidos: ${String(response.error)}`);
+        return;
+      }
+
+      const restoredCount = Number(response?.data?.restored_count || 0);
+      const skippedCount = Array.isArray(response?.data?.skipped) ? response.data.skipped.length : 0;
+      const notFoundCount = Array.isArray(response?.data?.not_found) ? response.data.not_found.length : 0;
+
+      setNotice(
+        `Restauração concluída: ${restoredCount} pedido(s) restaurado(s), ${skippedCount} ignorado(s), ${notFoundCount} não encontrado(s).`
+      );
+      setSelectedRestoreLogIds([]);
+      setCurrentPage(1);
+      setFilters((prev) => ({ ...prev }));
+    } catch (restoreError: any) {
+      setError(String(restoreError?.message || 'Falha ao restaurar pedidos de compra.'));
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   const actionStats = useMemo(() => {
@@ -508,6 +595,7 @@ export const GeneralAudit: React.FC<GeneralAuditProps> = ({ activeWarehouse }) =
             <option value="create">Criação</option>
             <option value="update">Atualização</option>
             <option value="delete">Exclusão</option>
+            <option value="restore">Restauração</option>
             <option value="receipt_finalize">Finalização de recebimento</option>
             <option value="inventory_increment">Incremento de estoque</option>
           </select>
@@ -592,6 +680,13 @@ export const GeneralAudit: React.FC<GeneralAuditProps> = ({ activeWarehouse }) =
           >
             Limpar
           </button>
+          <button
+            onClick={handleRestoreSelected}
+            disabled={selectedRestoreLogIds.length === 0 || isRestoring}
+            className="px-5 py-2.5 rounded-xl bg-teal-600 text-white text-[11px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isRestoring ? 'Restaurando...' : `Restaurar pedidos (${selectedRestoreLogIds.length})`}
+          </button>
           <div className="ml-auto px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] font-black uppercase tracking-wider text-slate-500">
             Total filtrado: {totalRows}
           </div>
@@ -616,6 +711,18 @@ export const GeneralAudit: React.FC<GeneralAuditProps> = ({ activeWarehouse }) =
           <table className="w-full text-left border-collapse min-w-[1180px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                <th className="px-4 py-5 text-center">
+                  <input
+                    type="checkbox"
+                    checked={
+                      restorableRowsOnPage.length > 0
+                      && selectedRestorableRowsOnPage.length === restorableRowsOnPage.length
+                    }
+                    onChange={toggleSelectAllRestorableOnPage}
+                    className="size-4 accent-teal-600"
+                    title="Selecionar todos os pedidos restauráveis desta página"
+                  />
+                </th>
                 <th className="px-6 py-5">Data / Hora</th>
                 <th className="px-6 py-5">Módulo</th>
                 <th className="px-6 py-5">Entidade</th>
@@ -636,6 +743,19 @@ export const GeneralAudit: React.FC<GeneralAuditProps> = ({ activeWarehouse }) =
 
                   return (
                     <tr key={row.id} className="hover:bg-slate-50/50 transition-all">
+                      <td className="px-4 py-4 text-center">
+                        {isRestorablePurchaseOrderLog(row) ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedRestoreLogIds.includes(String(row.id || ''))}
+                            onChange={() => toggleRestoreSelection(String(row.id || ''))}
+                            className="size-4 accent-teal-600"
+                            title="Selecionar para restauração"
+                          />
+                        ) : (
+                          <span className="text-[10px] font-black text-slate-300">-</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4">
                         <p className="text-xs font-black text-slate-800 dark:text-white">{when.date}</p>
                         <p className="text-[10px] font-bold text-slate-400">{when.time}</p>
@@ -668,7 +788,7 @@ export const GeneralAudit: React.FC<GeneralAuditProps> = ({ activeWarehouse }) =
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-20 text-center text-xs font-black uppercase tracking-widest text-slate-400">
+                  <td colSpan={9} className="px-6 py-20 text-center text-xs font-black uppercase tracking-widest text-slate-400">
                     {isLoading ? 'Carregando trilha de auditoria...' : 'Nenhum evento encontrado para os filtros informados.'}
                   </td>
                 </tr>
