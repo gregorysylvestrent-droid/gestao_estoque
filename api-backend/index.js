@@ -23,10 +23,6 @@ const DATA_DIR = path.join(__dirname, 'data');
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret-change-me';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 const DB_HEALTHCHECK_INTERVAL_MS = Number(process.env.DB_HEALTHCHECK_INTERVAL_MS || 10000);
-const PURCHASE_ORDER_RETENTION_MS = 24 * 60 * 60 * 1000;
-const PO_RETENTION_CLEANUP_INTERVAL_MS = Number(
-  process.env.PO_RETENTION_CLEANUP_INTERVAL_MS || 60 * 1000
-);
 
 const PASSWORD_PREFIX = 'pbkdf2';
 const PASSWORD_ITERATIONS = 310000;
@@ -1387,118 +1383,6 @@ const setDbAuditContext = async (db, { actor, actorId, module }) => {
     `,
     [String(actor || ''), actorId ? String(actorId) : '', String(module || '')]
   );
-};
-
-let poRetentionCleanupInFlight = false;
-
-const isDeliveredPoExpired = (row, cutoffTimeMs) => {
-  if (!row || typeof row !== 'object') return false;
-  if (String(row.status || '') !== 'recebido') return false;
-  if (!row.received_at) return false;
-
-  const receivedAt = new Date(row.received_at);
-  if (Number.isNaN(receivedAt.getTime())) return false;
-  return receivedAt.getTime() <= cutoffTimeMs;
-};
-
-const buildPoRetentionAuditLog = (row, cutoffIso, mode) =>
-  buildAuditLog({
-    module: 'purchase_orders',
-    action: 'delete',
-    entity: 'purchase_orders',
-    entityId: getEntityId('purchase_orders', row),
-    actor: 'Sistema',
-    actorId: null,
-    warehouseId: row?.warehouse_id || null,
-    beforeData: row,
-    afterData: null,
-    meta: {
-      reason: 'retention_cleanup_after_24h_recebido',
-      retention_hours: 24,
-      received_at: row?.received_at || null,
-      cutoff_at: cutoffIso,
-      mode,
-    },
-  });
-
-const runPurchaseOrdersRetentionCleanup = async () => {
-  if (poRetentionCleanupInFlight) return;
-  poRetentionCleanupInFlight = true;
-
-  const cutoffTimeMs = Date.now() - PURCHASE_ORDER_RETENTION_MS;
-  const cutoffIso = new Date(cutoffTimeMs).toISOString();
-
-  try {
-    if (!dbConnected) {
-      const currentRows = normalizeRowsByTable('purchase_orders', readJson('purchase_orders'));
-      if (!Array.isArray(currentRows) || currentRows.length === 0) return;
-
-      const rowsToDelete = [];
-      const rowsToKeep = [];
-
-      currentRows.forEach((row) => {
-        if (isDeliveredPoExpired(row, cutoffTimeMs)) {
-          rowsToDelete.push(row);
-          return;
-        }
-        rowsToKeep.push(row);
-      });
-
-      if (rowsToDelete.length === 0) return;
-
-      writeJson('purchase_orders', rowsToKeep);
-      await persistAuditLogs(rowsToDelete.map((row) => buildPoRetentionAuditLog(row, cutoffIso, 'json')));
-      console.log(`[PO RETENTION] ${rowsToDelete.length} pedido(s) entregue(s) removido(s) em modo JSON.`);
-      return;
-    }
-
-    let client;
-    try {
-      client = await pool.connect();
-      await client.query('BEGIN');
-      await setDbAuditContext(client, {
-        actor: 'Sistema',
-        actorId: null,
-        module: 'purchase_orders',
-      });
-
-      const deleteResult = await client.query(
-        `
-          DELETE FROM purchase_orders
-          WHERE status = 'recebido'
-            AND received_at IS NOT NULL
-            AND received_at <= $1
-          RETURNING *
-        `,
-        [cutoffIso]
-      );
-
-      const deletedRows = normalizeRowsByTable('purchase_orders', deleteResult.rows);
-      if (deletedRows.length > 0) {
-        const auditEntries = deletedRows.map((row) => buildPoRetentionAuditLog(row, cutoffIso, 'db'));
-        await persistAuditLogs(auditEntries, client);
-      }
-
-      await client.query('COMMIT');
-      if (deletedRows.length > 0) {
-        console.log(`[PO RETENTION] ${deletedRows.length} pedido(s) entregue(s) removido(s) em modo DB.`);
-      }
-    } catch (err) {
-      if (client) {
-        try {
-          await client.query('ROLLBACK');
-        } catch {
-          // noop
-        }
-      }
-      markDbDisconnectedIfNeeded(err);
-      console.warn(`[PO RETENTION] cleanup failed: ${getErrorReason(err)}`);
-    } finally {
-      if (client) client.release();
-    }
-  } finally {
-    poRetentionCleanupInFlight = false;
-  }
 };
 
 const sendUniqueConstraintConflict = (res, err) => {
@@ -3410,11 +3294,6 @@ app.delete('/:table', authenticate, async (req, res) => {
     if (client) client.release();
   }
 });
-
-void runPurchaseOrdersRetentionCleanup();
-setInterval(() => {
-  void runPurchaseOrdersRetentionCleanup();
-}, PO_RETENTION_CLEANUP_INTERVAL_MS);
 
 const server = app.listen(port, () => {
   console.log(`API running on port ${port}`);
