@@ -626,18 +626,6 @@ export const App: React.FC = () => {
   const PURCHASE_ORDERS_PAGE_SIZE = 30; // Reduzido de 60
   const MATERIAL_REQUESTS_PAGE_SIZE = 30; // Reduzido de 60
   const MASTER_DATA_PAGE_SIZE_OPTIONS = [25, 50, 100];
-  const PURCHASE_ORDER_RECEIVED_RETENTION_MS = 24 * 60 * 60 * 1000;
-  const PURCHASE_ORDER_EXPIRY_CHECK_INTERVAL_MS = 60 * 1000;
-
-  const isPurchaseOrderExpiredAfterReceipt = (order: PurchaseOrder, nowMs = Date.now()) => {
-    if (!order || order.status !== 'recebido') return false;
-    const receivedAt = parseDateLike(order.receivedAt);
-    if (!receivedAt) return false;
-    return nowMs - receivedAt.getTime() >= PURCHASE_ORDER_RECEIVED_RETENTION_MS;
-  };
-
-  const pruneExpiredDeliveredPurchaseOrders = (orders: PurchaseOrder[], nowMs = Date.now()) =>
-    orders.filter((order) => !isPurchaseOrderExpiredAfterReceipt(order, nowMs));
 
   const toPtBrDateTime = (value: unknown, fallback = ''): string => {
     const parsed = formatDateTimePtBR(value, fallback);
@@ -958,6 +946,17 @@ export const App: React.FC = () => {
       socket.close();
     };
   }, [currentSystemModule, activeWarehouse, user]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePurchaseOrdersRestored = () => {
+      void refreshPurchaseOrdersAfterAuditRestore();
+    };
+
+    window.addEventListener('purchase_orders_restored', handlePurchaseOrdersRestored);
+    return () => window.removeEventListener('purchase_orders_restored', handlePurchaseOrdersRestored);
+  }, []);
 
   const createPOStatusHistoryEntry = (
     status: PurchaseOrderStatus,
@@ -1321,9 +1320,17 @@ export const App: React.FC = () => {
       const { data: poData } = await api.from('purchase_orders').select('*').order('request_date', { ascending: false });
       if (!poData) return;
 
-      setPurchaseOrders(pruneExpiredDeliveredPurchaseOrders(mapPurchaseOrders(poData)));
+      setPurchaseOrders(mapPurchaseOrders(poData));
       setIsPurchaseOrdersFullyLoaded(true);
     });
+  };
+
+  const refreshPurchaseOrdersAfterAuditRestore = async () => {
+    const { data: poData, error } = await api.from('purchase_orders').select('*').order('request_date', { ascending: false });
+    if (error || !poData) return;
+
+    setPurchaseOrders(mapPurchaseOrders(poData));
+    setIsPurchaseOrdersFullyLoaded(true);
   };
 
   const loadMovementsFull = async () => {
@@ -1411,7 +1418,7 @@ export const App: React.FC = () => {
         return;
       }
 
-      const mapped = pruneExpiredDeliveredPurchaseOrders(mapPurchaseOrders(data));
+      const mapped = mapPurchaseOrders(data);
       setHasMorePurchaseOrders(mapped.length > PURCHASE_ORDERS_PAGE_SIZE);
       setPagedPurchaseOrders(mapped.slice(0, PURCHASE_ORDERS_PAGE_SIZE));
     } catch (error) {
@@ -1680,7 +1687,7 @@ export const App: React.FC = () => {
           .order('request_date', { ascending: false })
           .limit(INITIAL_PURCHASE_ORDERS_LIMIT);
         if (poData) {
-          setPurchaseOrders(pruneExpiredDeliveredPurchaseOrders(mapPurchaseOrders(poData)));
+          setPurchaseOrders(mapPurchaseOrders(poData));
           setIsPurchaseOrdersFullyLoaded(poData.length < INITIAL_PURCHASE_ORDERS_LIMIT);
         }
 
@@ -1813,26 +1820,6 @@ export const App: React.FC = () => {
     }
     saveToStorage(STORAGE_KEYS.LAST_SYSTEM_MODULE, currentSystemModule);
   }, [currentSystemModule, user]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const intervalId = window.setInterval(() => {
-      const nowMs = Date.now();
-
-      setPurchaseOrders((prev) => {
-        const next = pruneExpiredDeliveredPurchaseOrders(prev, nowMs);
-        return next.length === prev.length ? prev : next;
-      });
-
-      setPagedPurchaseOrders((prev) => {
-        const next = pruneExpiredDeliveredPurchaseOrders(prev, nowMs);
-        return next.length === prev.length ? prev : next;
-      });
-    }, PURCHASE_ORDER_EXPIRY_CHECK_INTERVAL_MS);
-
-    return () => window.clearInterval(intervalId);
-  }, [user]);
 
   useEffect(() => {
     if (activeModule !== 'expedicao') return;

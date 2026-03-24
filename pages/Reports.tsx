@@ -17,6 +17,39 @@ const STATUS_VISUALS: Record<PurchaseOrderStatus, { color: string; bg: string; r
   cancelado: { color: 'text-red-500', bg: 'bg-red-500/10', ring: 'ring-red-500/20' }
 };
 
+const REPORT_STATUS_FLOW: PurchaseOrderStatus[] = ['requisicao', 'cotacao', 'pendente', 'aprovado', 'enviado', 'recebido'];
+
+const getHistoryStatusTimestamp = (order: PurchaseOrder, status: PurchaseOrderStatus): Date | null => {
+  const historyMatches = (order.approvalHistory || [])
+    .filter((entry) => entry?.status === status && entry?.at)
+    .map((entry) => parseDateLike(entry.at))
+    .filter((date): date is Date => Boolean(date))
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  return historyMatches[0] || null;
+};
+
+const getOrderStatusTimestampMap = (order: PurchaseOrder): Record<PurchaseOrderStatus, Date | null> => ({
+  rascunho: getHistoryStatusTimestamp(order, 'rascunho'),
+  requisicao: parseDateLike(order.requestDate) || getHistoryStatusTimestamp(order, 'requisicao'),
+  cotacao: parseDateLike(order.quotesAddedAt || '') || getHistoryStatusTimestamp(order, 'cotacao'),
+  pendente: getHistoryStatusTimestamp(order, 'pendente'),
+  aprovado: parseDateLike(order.approvedAt || '') || getHistoryStatusTimestamp(order, 'aprovado'),
+  enviado: parseDateLike(order.sentToVendorAt || '') || getHistoryStatusTimestamp(order, 'enviado'),
+  recebido: parseDateLike(order.receivedAt || '') || getHistoryStatusTimestamp(order, 'recebido'),
+  cancelado: getHistoryStatusTimestamp(order, 'cancelado'),
+});
+
+const formatDateTimeForExport = (value: Date | null) => {
+  if (!value) return '';
+  return value.toLocaleString('pt-BR');
+};
+
+const diffMinutes = (start: Date | null, end: Date | null) => {
+  if (!start || !end) return '';
+  const delta = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+  return Number.isFinite(delta) && delta >= 0 ? String(delta) : '';
+};
 
 const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders }) => {
   const [periodDays, setPeriodDays] = useState(30);
@@ -109,6 +142,65 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
       vendorRank: getRanking('vendor')
     };
   }, [orders, periodDays]);
+
+  const handleExportLeadTimeReport = () => {
+    if (!Array.isArray(orders) || orders.length === 0) return;
+
+    const csvHeader = [
+      'pedido_id',
+      'status_atual',
+      'fornecedor',
+      'requisicao_data_hora',
+      'cotacao_data_hora',
+      'pendente_data_hora',
+      'aprovado_data_hora',
+      'enviado_data_hora',
+      'recebido_data_hora',
+      'min_requisicao_para_cotacao',
+      'min_cotacao_para_pendente',
+      'min_pendente_para_aprovado',
+      'min_aprovado_para_enviado',
+      'min_enviado_para_recebido',
+      'min_total_requisicao_para_recebido',
+    ];
+
+    const escapeCsv = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+
+    const csvRows = orders.map((order) => {
+      const timestamps = getOrderStatusTimestampMap(order);
+      const flowPairs: Array<[PurchaseOrderStatus, PurchaseOrderStatus]> = [
+        ['requisicao', 'cotacao'],
+        ['cotacao', 'pendente'],
+        ['pendente', 'aprovado'],
+        ['aprovado', 'enviado'],
+        ['enviado', 'recebido'],
+      ];
+
+      const minutesByFlow = flowPairs.map(([startStatus, endStatus]) =>
+        diffMinutes(timestamps[startStatus], timestamps[endStatus])
+      );
+
+      const row = [
+        order.id,
+        PO_STATUS_LABELS[order.status] || order.status,
+        order.vendor,
+        ...REPORT_STATUS_FLOW.map((status) => formatDateTimeForExport(timestamps[status])),
+        ...minutesByFlow,
+        diffMinutes(timestamps.requisicao, timestamps.recebido),
+      ];
+
+      return row.map(escapeCsv).join(';');
+    });
+
+    const csvContent = `${csvHeader.join(';')}\n${csvRows.join('\n')}`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `relatorio-leadtime-pedidos-${new Date().toISOString().slice(0, 19).replaceAll(':', '-')}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-8 mt-12 pt-12 border-t border-slate-200 dark:border-slate-800 animate-in fade-in duration-700">
@@ -225,15 +317,24 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
             <div className="w-1 h-4 bg-primary rounded-full" />
             <h5 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-[0.2em]">Indicadores do fluxo no período</h5>
           </div>
-          <select
-            value={periodDays}
-            onChange={(e) => setPeriodDays(Number(e.target.value))}
-            className="bg-white dark:bg-[#1a222c] border-2 border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-primary transition-all cursor-pointer"
-          >
-            <option value={7}>Últimos 7 dias</option>
-            <option value={30}>Últimos 30 dias</option>
-            <option value={90}>Últimos 90 dias</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <select
+              value={periodDays}
+              onChange={(e) => setPeriodDays(Number(e.target.value))}
+              className="bg-white dark:bg-[#1a222c] border-2 border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-primary transition-all cursor-pointer"
+            >
+              <option value={7}>Últimos 7 dias</option>
+              <option value={30}>Últimos 30 dias</option>
+              <option value={90}>Últimos 90 dias</option>
+            </select>
+            <button
+              onClick={handleExportLeadTimeReport}
+              disabled={orders.length === 0}
+              className="px-4 py-2 rounded-xl bg-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Exportar Lead Time
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

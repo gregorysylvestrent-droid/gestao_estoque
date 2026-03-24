@@ -470,6 +470,9 @@ export const GeneralAudit: React.FC<GeneralAuditProps> = ({ activeWarehouse }) =
       setNotice(
         `Restauração concluída: ${restoredCount} pedido(s) restaurado(s), ${skippedCount} ignorado(s), ${notFoundCount} não encontrado(s).`
       );
+      if (typeof window !== 'undefined' && restoredCount > 0) {
+        window.dispatchEvent(new CustomEvent('purchase_orders_restored', { detail: { restoredCount } }));
+      }
       setSelectedRestoreLogIds([]);
       setCurrentPage(1);
       setFilters((prev) => ({ ...prev }));
