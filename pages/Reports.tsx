@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import * as XLSX from 'xlsx';
 import { PurchaseOrder, PurchaseOrderStatus, PO_STATUS_LABELS } from '../types';
 import { parseDateLike } from '../utils/dateTime';
 
@@ -152,59 +153,31 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
   const handleExportLeadTimeReport = () => {
     if (!Array.isArray(orders) || orders.length === 0) return;
 
-    const requisitionToReceivedDays = orders
-      .map((order) => {
-        const timestamps = getOrderStatusTimestampMap(order);
-        const days = Number(diffDays(timestamps.requisicao, timestamps.recebido));
-        return Number.isFinite(days) ? days : null;
-      })
-      .filter((days): days is number => days !== null);
-
-    const quotationToReceivedDays = orders
-      .map((order) => {
-        const timestamps = getOrderStatusTimestampMap(order);
-        const days = Number(diffDays(timestamps.cotacao, timestamps.recebido));
-        return Number.isFinite(days) ? days : null;
-      })
-      .filter((days): days is number => days !== null);
-
-    const avgReqToReceivedDays = requisitionToReceivedDays.length > 0
-      ? (requisitionToReceivedDays.reduce((sum, value) => sum + value, 0) / requisitionToReceivedDays.length).toFixed(2)
-      : '';
-
-    const avgQuoteToReceivedDays = quotationToReceivedDays.length > 0
-      ? (quotationToReceivedDays.reduce((sum, value) => sum + value, 0) / quotationToReceivedDays.length).toFixed(2)
-      : '';
-
-    const csvHeader = [
-      'pedido_id',
-      'status_atual',
-      'fornecedor',
-      'requisicao_data_hora',
-      'centro_custo',
-      'placa',
-      'solicitante',
-      'comprador',
-      'prioridade',
-      'cotacao_data_hora',
-      'pendente_data_hora',
-      'aprovado_data_hora',
-      'enviado_data_hora',
-      'recebido_data_hora',
-      'dias_requisicao_para_cotacao',
-      'dias_cotacao_para_pendente',
-      'dias_pendente_para_aprovado',
-      'dias_aprovado_para_enviado',
-      'dias_enviado_para_recebido',
-      'dias_total_requisicao_para_recebido',
-      'dias_total_cotacao_para_recebido',
-      'media_dias_requisicao_para_recebido',
-      'media_dias_cotacao_para_recebido',
+    const headers = [
+      'ID do Pedido',
+      'Status Atual',
+      'Fornecedor',
+      'Centro de Custo',
+      'Placa',
+      'Solicitante',
+      'Comprador',
+      'Prioridade',
+      'Data/Hora Requisição',
+      'Data/Hora Cotação',
+      'Data/Hora Pendente',
+      'Data/Hora Aprovado',
+      'Data/Hora Enviado',
+      'Data/Hora Recebido',
+      'Dias Requisição → Cotação',
+      'Dias Cotação → Pendente',
+      'Dias Pendente → Aprovado',
+      'Dias Aprovado → Enviado',
+      'Dias Enviado → Recebido',
+      'Total de Dias Requisição → Recebido',
+      'Total de Dias Cotação → Recebido',
     ];
 
-    const escapeCsv = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
-
-    const csvRows = orders.map((order) => {
+    const rows = orders.map((order) => {
       const timestamps = getOrderStatusTimestampMap(order);
       const flowPairs: Array<[PurchaseOrderStatus, PurchaseOrderStatus]> = [
         ['requisicao', 'cotacao'],
@@ -218,7 +191,7 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
         diffDays(timestamps[startStatus], timestamps[endStatus])
       );
 
-      const row = [
+      return [
         order.id,
         PO_STATUS_LABELS[order.status] || order.status,
         order.vendor,
@@ -231,21 +204,13 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
         ...daysByFlow,
         diffDays(timestamps.requisicao, timestamps.recebido),
         diffDays(timestamps.cotacao, timestamps.recebido),
-        avgReqToReceivedDays,
-        avgQuoteToReceivedDays,
       ];
-
-      return row.map(escapeCsv).join(';');
     });
 
-    const csvContent = `${csvHeader.join(';')}\n${csvRows.join('\n')}`;
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `relatorio-leadtime-pedidos-${new Date().toISOString().slice(0, 19).replaceAll(':', '-')}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Lead Time Pedidos');
+    XLSX.writeFile(workbook, `relatorio-leadtime-pedidos-${new Date().toISOString().slice(0, 19).replaceAll(':', '-')}.xlsx`);
   };
 
   return (
