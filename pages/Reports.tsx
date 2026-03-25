@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { PurchaseOrder, PurchaseOrderStatus, PO_STATUS_LABELS } from '../types';
 import { parseDateLike } from '../utils/dateTime';
 
@@ -45,10 +45,16 @@ const formatDateTimeForExport = (value: Date | null) => {
   return value.toLocaleString('pt-BR');
 };
 
-const diffMinutes = (start: Date | null, end: Date | null) => {
+const diffDays = (start: Date | null, end: Date | null) => {
   if (!start || !end) return '';
-  const delta = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
-  return Number.isFinite(delta) && delta >= 0 ? String(delta) : '';
+  const delta = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+  return Number.isFinite(delta) && delta >= 0 ? delta.toFixed(2) : '';
+};
+
+const getBuyerFromApprovalHistory = (order: PurchaseOrder) => {
+  const requisitionEntry = (order.approvalHistory || [])
+    .find((entry) => entry?.status === 'requisicao' && String(entry?.by || '').trim().length > 0);
+  return String(requisitionEntry?.by || '').trim();
 };
 
 const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders }) => {
@@ -146,22 +152,54 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
   const handleExportLeadTimeReport = () => {
     if (!Array.isArray(orders) || orders.length === 0) return;
 
+    const requisitionToReceivedDays = orders
+      .map((order) => {
+        const timestamps = getOrderStatusTimestampMap(order);
+        const days = Number(diffDays(timestamps.requisicao, timestamps.recebido));
+        return Number.isFinite(days) ? days : null;
+      })
+      .filter((days): days is number => days !== null);
+
+    const quotationToReceivedDays = orders
+      .map((order) => {
+        const timestamps = getOrderStatusTimestampMap(order);
+        const days = Number(diffDays(timestamps.cotacao, timestamps.recebido));
+        return Number.isFinite(days) ? days : null;
+      })
+      .filter((days): days is number => days !== null);
+
+    const avgReqToReceivedDays = requisitionToReceivedDays.length > 0
+      ? (requisitionToReceivedDays.reduce((sum, value) => sum + value, 0) / requisitionToReceivedDays.length).toFixed(2)
+      : '';
+
+    const avgQuoteToReceivedDays = quotationToReceivedDays.length > 0
+      ? (quotationToReceivedDays.reduce((sum, value) => sum + value, 0) / quotationToReceivedDays.length).toFixed(2)
+      : '';
+
     const csvHeader = [
       'pedido_id',
       'status_atual',
       'fornecedor',
       'requisicao_data_hora',
+      'centro_custo',
+      'placa',
+      'solicitante',
+      'comprador',
+      'prioridade',
       'cotacao_data_hora',
       'pendente_data_hora',
       'aprovado_data_hora',
       'enviado_data_hora',
       'recebido_data_hora',
-      'min_requisicao_para_cotacao',
-      'min_cotacao_para_pendente',
-      'min_pendente_para_aprovado',
-      'min_aprovado_para_enviado',
-      'min_enviado_para_recebido',
-      'min_total_requisicao_para_recebido',
+      'dias_requisicao_para_cotacao',
+      'dias_cotacao_para_pendente',
+      'dias_pendente_para_aprovado',
+      'dias_aprovado_para_enviado',
+      'dias_enviado_para_recebido',
+      'dias_total_requisicao_para_recebido',
+      'dias_total_cotacao_para_recebido',
+      'media_dias_requisicao_para_recebido',
+      'media_dias_cotacao_para_recebido',
     ];
 
     const escapeCsv = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
@@ -176,17 +214,25 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
         ['enviado', 'recebido'],
       ];
 
-      const minutesByFlow = flowPairs.map(([startStatus, endStatus]) =>
-        diffMinutes(timestamps[startStatus], timestamps[endStatus])
+      const daysByFlow = flowPairs.map(([startStatus, endStatus]) =>
+        diffDays(timestamps[startStatus], timestamps[endStatus])
       );
 
       const row = [
         order.id,
         PO_STATUS_LABELS[order.status] || order.status,
         order.vendor,
+        order.costCenter || '',
+        order.plate || '',
+        order.requester || '',
+        getBuyerFromApprovalHistory(order),
+        order.priority || '',
         ...REPORT_STATUS_FLOW.map((status) => formatDateTimeForExport(timestamps[status])),
-        ...minutesByFlow,
-        diffMinutes(timestamps.requisicao, timestamps.recebido),
+        ...daysByFlow,
+        diffDays(timestamps.requisicao, timestamps.recebido),
+        diffDays(timestamps.cotacao, timestamps.recebido),
+        avgReqToReceivedDays,
+        avgQuoteToReceivedDays,
       ];
 
       return row.map(escapeCsv).join(';');
@@ -480,21 +526,46 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
   );
 };
 
-const productivityData = [
-  { name: 'Seg', rec: 400, exp: 240 },
-  { name: 'Ter', rec: 300, exp: 139 },
-  { name: 'Qua', rec: 200, exp: 980 },
-  { name: 'Qui', rec: 278, exp: 390 },
-  { name: 'Sex', rec: 189, exp: 480 },
-  { name: 'Sab', rec: 239, exp: 380 },
-  { name: 'Dom', rec: 349, exp: 430 },
-];
-
 interface ReportsProps {
   orders?: PurchaseOrder[];
 }
 
 export const Reports: React.FC<ReportsProps> = ({ orders = [] }) => {
+  const purchaseOrderLeadTimeByMonth = useMemo(() => {
+    const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
+    const aggregated = new Map<string, { label: string; totalDays: number; count: number; order: number }>();
+
+    orders.forEach((order) => {
+      if (order.status !== 'recebido' || !order.receivedAt) return;
+
+      const createdAt = parseDateLike(order.requestDate);
+      const finishedAt = parseDateLike(order.receivedAt);
+      if (!createdAt || !finishedAt) return;
+
+      const diffInDays = (finishedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+      if (!Number.isFinite(diffInDays) || diffInDays < 0) return;
+
+      const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+      const current = aggregated.get(monthKey) || {
+        label: monthFormatter.format(createdAt).replace('.', '').replace(/^\w/, (char) => char.toUpperCase()),
+        totalDays: 0,
+        count: 0,
+        order: createdAt.getFullYear() * 12 + createdAt.getMonth(),
+      };
+
+      current.totalDays += diffInDays;
+      current.count += 1;
+      aggregated.set(monthKey, current);
+    });
+
+    return [...aggregated.values()]
+      .sort((a, b) => a.order - b.order)
+      .map((month) => ({
+        month: month.label,
+        avgDays: Number((month.totalDays / month.count).toFixed(1)),
+      }));
+  }, [orders]);
+
   return (
     <div className="space-y-8">
       <div className="flex items-end justify-between">
@@ -520,31 +591,35 @@ export const Reports: React.FC<ReportsProps> = ({ orders = [] }) => {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h3 className="text-lg font-bold">Produtividade de Operações</h3>
-              <p className="text-xs text-gray-500 font-medium">Recebimento vs Expedição por dia</p>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-primary"></span><span className="text-[10px] font-black text-gray-500 uppercase">Recebimento</span></div>
-              <div className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-purple-500"></span><span className="text-[10px] font-black text-gray-500 uppercase">Expedição</span></div>
+              <p className="text-xs text-gray-500 font-medium">Tempo médio de finalização (status recebido) por mês de criação</p>
             </div>
           </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={productivityData}>
-                <defs>
-                  <linearGradient id="colorRec" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#137fec" stopOpacity={0.1} />
-                    <stop offset="95%" stopColor="#137fec" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.1} />
-                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="name" stroke="#617589" fontSize={11} fontWeight="bold" axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                <Area type="monotone" dataKey="rec" stroke="#137fec" strokeWidth={3} fillOpacity={1} fill="url(#colorRec)" />
-                <Area type="monotone" dataKey="exp" stroke="#a855f7" strokeWidth={3} fillOpacity={1} fill="url(#colorExp)" />
-              </AreaChart>
+              <BarChart data={purchaseOrderLeadTimeByMonth}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="month" stroke="#617589" fontSize={11} fontWeight="bold" axisLine={false} tickLine={false} />
+                <YAxis
+                  stroke="#617589"
+                  fontSize={11}
+                  fontWeight="bold"
+                  axisLine={false}
+                  tickLine={false}
+                  label={{ value: 'Dias', angle: -90, position: 'insideLeft', fill: '#617589' }}
+                />
+                <Tooltip
+                  formatter={(value: number) => [`${value} dias`, 'Média']}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                />
+                <ReferenceLine
+                  y={15}
+                  stroke="#ef4444"
+                  strokeDasharray="6 6"
+                  strokeWidth={2}
+                  label={{ value: 'Meta 15 dias', position: 'insideTopRight', fill: '#ef4444', fontSize: 11 }}
+                />
+                <Bar dataKey="avgDays" fill="#137fec" radius={[8, 8, 0, 0]} maxBarSize={44} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
