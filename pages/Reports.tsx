@@ -496,11 +496,76 @@ interface ReportsProps {
 }
 
 export const Reports: React.FC<ReportsProps> = ({ orders = [] }) => {
+  const [dateFromFilter, setDateFromFilter] = useState('');
+  const [dateToFilter, setDateToFilter] = useState('');
+  const [plateFilter, setPlateFilter] = useState('');
+  const [costCenterFilter, setCostCenterFilter] = useState('');
+  const [vendorFilter, setVendorFilter] = useState('');
+  const [requesterFilter, setRequesterFilter] = useState('');
+  const [buyerFilter, setBuyerFilter] = useState('');
+
+  const filterOptions = useMemo(() => {
+    const unique = (values: string[]) => [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    return {
+      plates: unique(orders.map((order) => order.plate || '')),
+      costCenters: unique(orders.map((order) => order.costCenter || '')),
+      vendors: unique(orders.map((order) => order.vendor || '')),
+      requesters: unique(orders.map((order) => order.requester || '')),
+      buyers: unique(orders.map((order) => getBuyerFromApprovalHistory(order))),
+    };
+  }, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    const fromDate = dateFromFilter ? parseDateLike(`${dateFromFilter}T00:00:00`) : null;
+    const toDate = dateToFilter ? parseDateLike(`${dateToFilter}T23:59:59`) : null;
+
+    return orders.filter((order) => {
+      const orderDate = parseDateLike(order.requestDate);
+      if (!orderDate) return false;
+      if (fromDate && orderDate < fromDate) return false;
+      if (toDate && orderDate > toDate) return false;
+      if (plateFilter && order.plate !== plateFilter) return false;
+      if (costCenterFilter && order.costCenter !== costCenterFilter) return false;
+      if (vendorFilter && order.vendor !== vendorFilter) return false;
+      if (requesterFilter && (order.requester || '') !== requesterFilter) return false;
+      if (buyerFilter && getBuyerFromApprovalHistory(order) !== buyerFilter) return false;
+      return true;
+    });
+  }, [orders, dateFromFilter, dateToFilter, plateFilter, costCenterFilter, vendorFilter, requesterFilter, buyerFilter]);
+
+  const kpis = useMemo(() => {
+    const completedOrders = filteredOrders.filter((order) => order.status === 'recebido');
+    const avgInDays = (values: string[]) => {
+      const parsed = values.map(Number).filter((value) => Number.isFinite(value) && value >= 0);
+      if (parsed.length === 0) return '---';
+      return `${(parsed.reduce((sum, value) => sum + value, 0) / parsed.length).toFixed(1)} dias`;
+    };
+
+    const cycleTimeValues = completedOrders.map((order) => {
+      const timestamps = getOrderStatusTimestampMap(order);
+      return diffDays(timestamps.requisicao, timestamps.recebido);
+    });
+
+    const leadTimeValues = completedOrders.map((order) => {
+      const timestamps = getOrderStatusTimestampMap(order);
+      return diffDays(timestamps.enviado, timestamps.recebido);
+    });
+
+    const operationCost = completedOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+
+    return {
+      cycleTime: avgInDays(cycleTimeValues),
+      leadTime: avgInDays(leadTimeValues),
+      operationCost: operationCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      completedCount: completedOrders.length,
+    };
+  }, [filteredOrders]);
+
   const purchaseOrderLeadTimeByMonth = useMemo(() => {
     const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
     const aggregated = new Map<string, { label: string; totalDays: number; count: number; order: number }>();
 
-    orders.forEach((order) => {
+    filteredOrders.forEach((order) => {
       if (order.status !== 'recebido' || !order.receivedAt) return;
 
       const createdAt = parseDateLike(order.requestDate);
@@ -529,26 +594,38 @@ export const Reports: React.FC<ReportsProps> = ({ orders = [] }) => {
         month: month.label,
         avgDays: Number((month.totalDays / month.count).toFixed(1)),
       }));
-  }, [orders]);
+  }, [filteredOrders]);
 
   return (
     <div className="space-y-8">
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-4">
         <div>
           <h2 className="text-3xl font-black tracking-tight">Relatórios e BI</h2>
           <p className="text-[#617589] font-medium">Análise de performance, acuracidade e throughput do armazém.</p>
         </div>
-        <div className="flex gap-2">
-          <button className="px-4 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-bold flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="size-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            Ultimos 30 dias
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            setDateFromFilter('');
+            setDateToFilter('');
+            setPlateFilter('');
+            setCostCenterFilter('');
+            setVendorFilter('');
+            setRequesterFilter('');
+            setBuyerFilter('');
+          }}
+          className="px-4 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-bold"
+        >
+          Limpar Filtros
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <input type="date" value={dateFromFilter} onChange={(e) => setDateFromFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm" title="Data inicial do pedido" />
+        <input type="date" value={dateToFilter} onChange={(e) => setDateToFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm" title="Data final do pedido" />
+        <select value={plateFilter} onChange={(e) => setPlateFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm"><option value="">Todas as placas</option>{filterOptions.plates.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+        <select value={costCenterFilter} onChange={(e) => setCostCenterFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm"><option value="">Todos os centros de custo</option>{filterOptions.costCenters.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+        <select value={vendorFilter} onChange={(e) => setVendorFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm"><option value="">Todos os fornecedores</option>{filterOptions.vendors.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+        <select value={requesterFilter} onChange={(e) => setRequesterFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm"><option value="">Todos os solicitantes</option>{filterOptions.requesters.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+        <select value={buyerFilter} onChange={(e) => setBuyerFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm"><option value="">Todos os compradores</option>{filterOptions.buyers.map((value) => <option key={value} value={value}>{value}</option>)}</select>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -621,8 +698,8 @@ export const Reports: React.FC<ReportsProps> = ({ orders = [] }) => {
         {[
           {
             label: 'Cycle Time Médio',
-            value: '42 min',
-            change: '-5min',
+            value: kpis.cycleTime,
+            change: `${kpis.completedCount} pedidos recebidos`,
             color: 'text-blue-500',
             icon: (
               <svg xmlns="http://www.w3.org/2000/svg" className="size-10 opacity-20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -633,8 +710,8 @@ export const Reports: React.FC<ReportsProps> = ({ orders = [] }) => {
           },
           {
             label: 'Lead Time Médio',
-            value: '2.4 dias',
-            change: '+0.2d',
+            value: kpis.leadTime,
+            change: 'Enviado → Recebido',
             color: 'text-purple-500',
             icon: (
               <svg xmlns="http://www.w3.org/2000/svg" className="size-10 opacity-20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -647,8 +724,8 @@ export const Reports: React.FC<ReportsProps> = ({ orders = [] }) => {
           },
           {
             label: 'Custo de Operação',
-            value: 'R$ 1.42/un',
-            change: '-R$ 0.12',
+            value: kpis.operationCost,
+            change: 'Total dos pedidos recebidos',
             color: 'text-green-500',
             icon: (
               <svg xmlns="http://www.w3.org/2000/svg" className="size-10 opacity-20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -670,7 +747,7 @@ export const Reports: React.FC<ReportsProps> = ({ orders = [] }) => {
           </div>
         ))}
       </div>
-      <ProcurementDashboard orders={orders} />
+      <ProcurementDashboard orders={filteredOrders} />
     </div>
   );
 };

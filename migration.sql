@@ -661,7 +661,7 @@ ALTER TABLE vendors ALTER COLUMN id_fornecedor SET DEFAULT nextval('vendors_id_f
 
 SELECT setval(
   'vendors_id_fornecedor_seq',
-  COALESCE((SELECT MAX(id_fornecedor) FROM vendors), 0),
+  COALESCE((SELECT MAX(id_fornecedor) FROM vendors), 1),
   true
 );
 
@@ -671,7 +671,7 @@ WHERE id_fornecedor IS NULL;
 
 SELECT setval(
   'vendors_id_fornecedor_seq',
-  COALESCE((SELECT MAX(id_fornecedor) FROM vendors), 0),
+  COALESCE((SELECT MAX(id_fornecedor) FROM vendors), 1),
   true
 );
 
