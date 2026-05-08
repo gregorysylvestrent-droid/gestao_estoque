@@ -4,7 +4,7 @@ import { PurchaseOrder, Vendor, InventoryItem, Quote, User, PO_STATUS_LABELS, Cy
 import { PaginationBar } from '../components/PaginationBar';
 import { formatDatePtBR, formatDateTimePtBR, parseDateLike, splitDateTimePtBR } from '../utils/dateTime';
 
-type PoSortKey = 'id' | 'requestDate' | 'product' | 'plateCenter' | 'status' | 'priority';
+type PoSortKey = 'id' | 'requestDate' | 'product' | 'plateCenter' | 'status' | 'priority' | 'totalAgeDays' | 'statusAgeDays';
 type PoSortDirection = 'asc' | 'desc';
 type ItemQuoteForm = {
   vendorId: string;
@@ -55,6 +55,55 @@ const getStatusColor = (status: PurchaseOrder['status']) => {
   }
 };
 
+
+
+const startOfLocalDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const getDaysElapsedFrom = (value: unknown, referenceDate = new Date()) => {
+  const startDate = parseDateLike(value);
+  if (!startDate) return null;
+
+  const start = startOfLocalDay(startDate).getTime();
+  const end = startOfLocalDay(referenceDate).getTime();
+  const diffDays = Math.floor((end - start) / 86_400_000);
+  return Math.max(0, diffDays);
+};
+
+const formatElapsedDays = (days: number | null) => {
+  if (days === null) return '-';
+  return `${days} ${days === 1 ? 'dia' : 'dias'}`;
+};
+
+const getStatusEntryDate = (order: PurchaseOrder) => {
+  const currentStatus = order.status;
+  const statusHistoryDates = (order.approvalHistory || [])
+    .filter((entry) => entry?.status === currentStatus)
+    .map((entry) => parseDateLike(entry?.at))
+    .filter((date): date is Date => Boolean(date))
+    .sort((a, b) => b.getTime() - a.getTime());
+
+  if (statusHistoryDates[0]) return statusHistoryDates[0];
+
+  const fallbackByStatus: Partial<Record<PurchaseOrder['status'], unknown>> = {
+    requisicao: order.requestDate,
+    cotacao: order.quotesAddedAt,
+    aprovado: order.approvedAt,
+    enviado: order.sentToVendorAt,
+    recebido: order.receivedAt,
+    cancelado: order.rejectedAt,
+  };
+
+  return parseDateLike(fallbackByStatus[currentStatus]) || parseDateLike(order.requestDate);
+};
+
+const formatDateForInput = (value: unknown) => {
+  const date = parseDateLike(value);
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const getBuyerFromApprovalHistory = (order: PurchaseOrder) => {
   const requisitionEntry = (order.approvalHistory || []).find((entry) => entry?.status === 'requisicao' && String(entry?.by || '').trim().length > 0);
@@ -384,6 +433,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   const [poStatusFilter, setPoStatusFilter] = useState('');
   const [poRequesterFilter, setPoRequesterFilter] = useState('');
   const [poBuyerFilter, setPoBuyerFilter] = useState('');
+  const [poOpeningDateFilter, setPoOpeningDateFilter] = useState('');
   const [poSortKey, setPoSortKey] = useState<PoSortKey>('requestDate');
   const [poSortDirection, setPoSortDirection] = useState<PoSortDirection>('desc');
   const [visibleQuoteForms, setVisibleQuoteForms] = useState(1);
@@ -552,6 +602,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
     const statusFilter = normalize(poStatusFilter);
     const requesterFilter = normalize(poRequesterFilter);
     const buyerFilter = normalize(poBuyerFilter);
+    const openingDateFilter = poOpeningDateFilter.trim();
 
     const baseOrders = orders.filter((order) => {
       if (!shouldOrderBeVisibleForRole(order, user.role)) return false;
@@ -579,7 +630,8 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
       const matchesStatus = !statusFilter || normalize(PO_STATUS_LABELS[order.status] || order.status).includes(statusFilter);
       const matchesRequester = !requesterFilter || normalize(order.requester).includes(requesterFilter);
       const matchesBuyer = !buyerFilter || normalize(buyerName).includes(buyerFilter);
-      return matchesSearch && matchesPlate && matchesCostCenter && matchesStatus && matchesRequester && matchesBuyer;
+      const matchesOpeningDate = !openingDateFilter || formatDateForInput(order.requestDate) === openingDateFilter;
+      return matchesSearch && matchesPlate && matchesCostCenter && matchesStatus && matchesRequester && matchesBuyer && matchesOpeningDate;
     });
 
     return baseOrders.sort((a, b) => {
@@ -589,6 +641,16 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
         const dateB = parseDateLike(b.requestDate)?.getTime() ?? 0;
         return (dateA - dateB) * factor;
       }
+      if (poSortKey === 'totalAgeDays') {
+        const ageA = getDaysElapsedFrom(a.requestDate) ?? -1;
+        const ageB = getDaysElapsedFrom(b.requestDate) ?? -1;
+        return (ageA - ageB) * factor;
+      }
+      if (poSortKey === 'statusAgeDays') {
+        const ageA = getDaysElapsedFrom(getStatusEntryDate(a)) ?? -1;
+        const ageB = getDaysElapsedFrom(getStatusEntryDate(b)) ?? -1;
+        return (ageA - ageB) * factor;
+      }
       const valueA: Record<PoSortKey, string> = {
         id: String(a.id || ''),
         requestDate: String(a.requestDate || ''),
@@ -596,6 +658,8 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
         plateCenter: `${a.plate || ''} ${a.costCenter || ''}`,
         status: String(PO_STATUS_LABELS[a.status] || a.status),
         priority: String(a.priority || ''),
+        totalAgeDays: String(getDaysElapsedFrom(a.requestDate) ?? ''),
+        statusAgeDays: String(getDaysElapsedFrom(getStatusEntryDate(a)) ?? ''),
       };
       const valueB: Record<PoSortKey, string> = {
         id: String(b.id || ''),
@@ -604,10 +668,12 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
         plateCenter: `${b.plate || ''} ${b.costCenter || ''}`,
         status: String(PO_STATUS_LABELS[b.status] || b.status),
         priority: String(b.priority || ''),
+        totalAgeDays: String(getDaysElapsedFrom(b.requestDate) ?? ''),
+        statusAgeDays: String(getDaysElapsedFrom(getStatusEntryDate(b)) ?? ''),
       };
       return valueA[poSortKey].localeCompare(valueB[poSortKey], 'pt-BR', { numeric: true }) * factor;
     });
-  }, [orders, user.role, poSearch, poPlateFilter, poCostCenterFilter, poStatusFilter, poRequesterFilter, poBuyerFilter, poSortKey, poSortDirection]);
+  }, [orders, user.role, poSearch, poPlateFilter, poCostCenterFilter, poStatusFilter, poRequesterFilter, poBuyerFilter, poOpeningDateFilter, poSortKey, poSortDirection]);
 
   const paginatedFilteredOrders = useMemo(() => {
     const startIndex = Math.max(0, (currentPage - 1) * pageSize);
@@ -2155,6 +2221,14 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
             />
           </div>
           <input
+            type="date"
+            value={poOpeningDateFilter}
+            onChange={(e) => setPoOpeningDateFilter(e.target.value)}
+            aria-label="Filtrar por data de abertura"
+            title="Filtrar por data de abertura"
+            className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
+          />
+          <input
             type="text"
             value={poPlateFilter}
             onChange={(e) => setPoPlateFilter(e.target.value)}
@@ -2219,6 +2293,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                 setPoStatusFilter('');
                 setPoRequesterFilter('');
                 setPoBuyerFilter('');
+                setPoOpeningDateFilter('');
               }}
               className="px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
             >
@@ -2235,6 +2310,8 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
               <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest" >
                 <th className="px-8 py-6 cursor-pointer select-none" onClick={() => togglePoSort('id')}> ID Pedido {poSortKey === 'id' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''} </th>
                 <th className="px-8 py-6 cursor-pointer select-none" onClick={() => togglePoSort('requestDate')}> Data Solicitação {poSortKey === 'requestDate' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''} </th>
+                <th className="px-8 py-6 text-center cursor-pointer select-none" onClick={() => togglePoSort('totalAgeDays')}> Tempo Pedido {poSortKey === 'totalAgeDays' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''} </th>
+                <th className="px-8 py-6 text-center cursor-pointer select-none" onClick={() => togglePoSort('statusAgeDays')}> Tempo no Status {poSortKey === 'statusAgeDays' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''} </th>
                 <th className="px-8 py-6 cursor-pointer select-none" onClick={() => togglePoSort('product')}> Produto / Cód.Produto {poSortKey === 'product' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''} </th>
                 <th className="px-8 py-6 cursor-pointer select-none" onClick={() => togglePoSort('plateCenter')}> Placa / Centro de Custo {poSortKey === 'plateCenter' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''} </th>
                 <th className="px-8 py-6 text-center cursor-pointer select-none" onClick={() => togglePoSort('status')}> Status {poSortKey === 'status' ? (poSortDirection === 'asc' ? '↑' : '↓') : ''} </th>
@@ -2251,6 +2328,14 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
                     </td>
                     <td className="px-8 py-5" >
                       <p className="text-[11px] font-black text-slate-700 dark:text-slate-200" > {formatDatePtBR(order.requestDate, order.requestDate)} </p>
+                    </td>
+                    <td className="px-8 py-5 text-center" >
+                      <p className="text-[11px] font-black text-slate-700 dark:text-slate-200" > {formatElapsedDays(getDaysElapsedFrom(order.requestDate))} </p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest" > desde abertura </p>
+                    </td>
+                    <td className="px-8 py-5 text-center" >
+                      <p className="text-[11px] font-black text-slate-700 dark:text-slate-200" > {formatElapsedDays(getDaysElapsedFrom(getStatusEntryDate(order)))} </p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest" > fase atual </p>
                     </td>
                     <td className="px-8 py-5" >
                       <div className="flex flex-col max-w-[200px]" >
