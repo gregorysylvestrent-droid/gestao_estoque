@@ -57,6 +57,29 @@ const getStatusColor = (status: PurchaseOrder['status']) => {
 
 
 
+
+const normalizeFilterText = (value: unknown) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const getMultiFilterTerms = (value: string) =>
+  normalizeFilterText(value)
+    .split(/[;,|\n]+/)
+    .map((term) => term.trim())
+    .filter(Boolean);
+
+const matchesMultiFilter = (value: unknown, rawFilter: string) => {
+  const terms = getMultiFilterTerms(rawFilter);
+  if (terms.length === 0) return true;
+  const normalizedValue = normalizeFilterText(value);
+  return terms.some((term) => normalizedValue.includes(term));
+};
+
+const MULTI_FILTER_HINT = 'Separe múltiplos valores por vírgula, ponto e vírgula ou |';
+
 const startOfLocalDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
 const getDaysElapsedFrom = (value: unknown, referenceDate = new Date()) => {
@@ -589,19 +612,6 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
   const totalOrder = useMemo(() => itemsList.reduce((acc, curr) => acc + (curr.qty * curr.price), 0), [itemsList]);
 
   const filteredSortedOrders = useMemo(() => {
-    const normalize = (value: unknown) =>
-      String(value ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .trim();
-
-    const search = normalize(poSearch);
-    const plateFilter = normalize(poPlateFilter);
-    const costCenterFilter = normalize(poCostCenterFilter);
-    const statusFilter = normalize(poStatusFilter);
-    const requesterFilter = normalize(poRequesterFilter);
-    const buyerFilter = normalize(poBuyerFilter);
     const openingDateFilter = poOpeningDateFilter.trim();
 
     const baseOrders = orders.filter((order) => {
@@ -610,7 +620,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
         .map((item) => `${item.name || ''} ${item.sku || ''}`)
         .join(' | ');
       const buyerName = getBuyerFromApprovalHistory(order);
-      const haystack = normalize([
+      const haystack = [
         order.id,
         order.requestDate,
         order.vendor,
@@ -622,14 +632,14 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
         itemsJoined,
         order.vendorOrderNumber,
         buyerName,
-      ].join(' '));
+      ].join(' ');
 
-      const matchesSearch = !search || haystack.includes(search);
-      const matchesPlate = !plateFilter || normalize(order.plate).includes(plateFilter);
-      const matchesCostCenter = !costCenterFilter || normalize(order.costCenter).includes(costCenterFilter);
-      const matchesStatus = !statusFilter || normalize(PO_STATUS_LABELS[order.status] || order.status).includes(statusFilter);
-      const matchesRequester = !requesterFilter || normalize(order.requester).includes(requesterFilter);
-      const matchesBuyer = !buyerFilter || normalize(buyerName).includes(buyerFilter);
+      const matchesSearch = matchesMultiFilter(haystack, poSearch);
+      const matchesPlate = matchesMultiFilter(order.plate, poPlateFilter);
+      const matchesCostCenter = matchesMultiFilter(order.costCenter, poCostCenterFilter);
+      const matchesStatus = matchesMultiFilter(PO_STATUS_LABELS[order.status] || order.status, poStatusFilter);
+      const matchesRequester = matchesMultiFilter(order.requester, poRequesterFilter);
+      const matchesBuyer = matchesMultiFilter(buyerName, poBuyerFilter);
       const matchesOpeningDate = !openingDateFilter || formatDateForInput(order.requestDate) === openingDateFilter;
       return matchesSearch && matchesPlate && matchesCostCenter && matchesStatus && matchesRequester && matchesBuyer && matchesOpeningDate;
     });
@@ -2217,6 +2227,7 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
               value={poSearch}
               onChange={(e) => setPoSearch(e.target.value)}
               placeholder="Busca geral (todas as colunas)"
+              title={MULTI_FILTER_HINT}
               className="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
             />
           </div>
@@ -2232,58 +2243,47 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
             type="text"
             value={poPlateFilter}
             onChange={(e) => setPoPlateFilter(e.target.value)}
-            placeholder="Filtrar por placa"
+            placeholder="Filtrar por placa (ex: ABC1234, XYZ9876)"
+            title={MULTI_FILTER_HINT}
             className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
           />
-          <select
+          <input
+            type="text"
             value={poCostCenterFilter}
             onChange={(e) => setPoCostCenterFilter(e.target.value)}
+            placeholder="Centros de custo (ex: CC1, CC2)"
+            title={MULTI_FILTER_HINT}
+            list="po-cost-center-options"
             className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
-          >
-            <option value="" > Todos os centros de custo </option>
-            {
-              costCenterOptions.map((center) => (
-                <option key={center} value={center} > {center} </option>
-              ))
-            }
-          </select>
-          <select
+          />
+          <input
+            type="text"
             value={poStatusFilter}
             onChange={(e) => setPoStatusFilter(e.target.value)}
+            placeholder="Status (ex: cotação, aprovado)"
+            title={MULTI_FILTER_HINT}
+            list="po-status-options"
             className="w-full px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
-          >
-            <option value="" > Todos os status </option>
-            {
-              statusOptions.map((status) => (
-                <option key={status} value={status} > {status} </option>
-              ))
-            }
-          </select>
+          />
           <div className="flex gap-2" >
-            <select
+            <input
+              type="text"
               value={poRequesterFilter}
               onChange={(e) => setPoRequesterFilter(e.target.value)}
+              placeholder="Solicitantes"
+              title={MULTI_FILTER_HINT}
+              list="po-requester-options"
               className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
-            >
-              <option value="" > Todos os solicitantes </option>
-              {
-                requesterOptions.map((requester) => (
-                  <option key={requester} value={requester} > {requester} </option>
-                ))
-              }
-            </select>
-            <select
+            />
+            <input
+              type="text"
               value={poBuyerFilter}
               onChange={(e) => setPoBuyerFilter(e.target.value)}
+              placeholder="Compradores"
+              title={MULTI_FILTER_HINT}
+              list="po-buyer-options"
               className="flex-1 px-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-100 focus:border-primary transition-all"
-            >
-              <option value="" > Todos os compradores </option>
-              {
-                buyerOptions.map((buyer) => (
-                  <option key={buyer} value={buyer} > {buyer} </option>
-                ))
-              }
-            </select>
+            />
             <button
               type="button"
               onClick={() => {
@@ -2301,6 +2301,18 @@ export const PurchaseOrders: React.FC<PurchaseOrdersProps> = ({
             </button>
           </div>
         </div>
+        <datalist id="po-cost-center-options">
+          {costCenterOptions.map((center) => <option key={center} value={center} />)}
+        </datalist>
+        <datalist id="po-status-options">
+          {statusOptions.map((status) => <option key={status} value={status} />)}
+        </datalist>
+        <datalist id="po-requester-options">
+          {requesterOptions.map((requester) => <option key={requester} value={requester} />)}
+        </datalist>
+        <datalist id="po-buyer-options">
+          {buyerOptions.map((buyer) => <option key={buyer} value={buyer} />)}
+        </datalist>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800 shadow-sm overflow-hidden" >

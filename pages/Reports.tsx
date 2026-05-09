@@ -6,6 +6,67 @@ import { PurchaseOrder, PurchaseOrderStatus, PO_STATUS_LABELS } from '../types';
 import { parseDateLike } from '../utils/dateTime';
 
 
+
+const normalizeFilterText = (value: unknown) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const getMultiFilterTerms = (value: string) =>
+  normalizeFilterText(value)
+    .split(/[;,|\n]+/)
+    .map((term) => term.trim())
+    .filter(Boolean);
+
+const matchesMultiFilter = (value: unknown, rawFilter: string) => {
+  const terms = getMultiFilterTerms(rawFilter);
+  if (terms.length === 0) return true;
+  const normalizedValue = normalizeFilterText(value);
+  return terms.some((term) => normalizedValue.includes(term));
+};
+
+const MULTI_FILTER_HINT = 'Separe múltiplos valores por vírgula, ponto e vírgula ou |';
+
+const startOfLocalDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const getDaysElapsedFrom = (value: unknown, referenceDate = new Date()) => {
+  const startDate = parseDateLike(value);
+  if (!startDate) return null;
+  const start = startOfLocalDay(startDate).getTime();
+  const end = startOfLocalDay(referenceDate).getTime();
+  const diffDays = Math.floor((end - start) / 86_400_000);
+  return Math.max(0, diffDays);
+};
+
+const formatElapsedDays = (days: number | null) => {
+  if (days === null) return '-';
+  return `${days} ${days === 1 ? 'dia' : 'dias'}`;
+};
+
+const getStatusEntryDate = (order: PurchaseOrder) => {
+  const currentStatus = order.status;
+  const statusHistoryDates = (order.approvalHistory || [])
+    .filter((entry) => entry?.status === currentStatus)
+    .map((entry) => parseDateLike(entry?.at))
+    .filter((date): date is Date => Boolean(date))
+    .sort((a, b) => b.getTime() - a.getTime());
+
+  if (statusHistoryDates[0]) return statusHistoryDates[0];
+
+  const fallbackByStatus: Partial<Record<PurchaseOrder['status'], unknown>> = {
+    requisicao: order.requestDate,
+    cotacao: order.quotesAddedAt,
+    aprovado: order.approvedAt,
+    enviado: order.sentToVendorAt,
+    recebido: order.receivedAt,
+    cancelado: order.rejectedAt,
+  };
+
+  return parseDateLike(fallbackByStatus[currentStatus]) || parseDateLike(order.requestDate);
+};
+
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
@@ -514,7 +575,7 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
       {/* Drill-down Modal */}
       {selectedMetric && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-[#101922] w-full max-w-5xl max-h-[85vh] rounded-[3rem] shadow-2xl overflow-hidden border border-white/20 flex flex-col animate-in zoom-in-95 duration-300">
+          <div className="bg-white dark:bg-[#101922] w-full max-w-7xl max-h-[85vh] rounded-[3rem] shadow-2xl overflow-hidden border border-white/20 flex flex-col animate-in zoom-in-95 duration-300">
             <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
               <div className="flex items-center gap-4">
                 <div className="size-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
@@ -546,10 +607,13 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
               <div className="grid grid-cols-1 gap-4">
                 {selectedMetric.orders.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                    <table className="w-full min-w-[1200px] text-left">
                       <thead>
                         <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
-                          <th className="px-4 py-3">ID / Data</th>
+                          <th className="px-4 py-3">Nº Pedido / Data</th>
+                          <th className="px-4 py-3">Tempo Pedido</th>
+                          <th className="px-4 py-3">Tempo no Status</th>
+                          <th className="px-4 py-3">Solicitante</th>
                           <th className="px-4 py-3">Fornecedor</th>
                           <th className="px-4 py-3">Produtos</th>
                           <th className="px-4 py-3">Valor Total</th>
@@ -564,7 +628,18 @@ const ProcurementDashboard: React.FC<{ orders: PurchaseOrder[] }> = ({ orders })
                               <div className="text-[10px] text-slate-500 font-medium">{o.requestDate}</div>
                             </td>
                             <td className="px-4 py-4">
-                              <div className="text-xs font-bold text-slate-700 dark:text-slate-300">{o.vendor}</div>
+                              <div className="text-xs font-black text-slate-700 dark:text-slate-200">{formatElapsedDays(getDaysElapsedFrom(o.requestDate))}</div>
+                              <div className="text-[9px] text-slate-400 font-bold uppercase">desde criação</div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-xs font-black text-slate-700 dark:text-slate-200">{formatElapsedDays(getDaysElapsedFrom(getStatusEntryDate(o)))}</div>
+                              <div className="text-[9px] text-slate-400 font-bold uppercase">fase atual</div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-xs font-bold text-slate-700 dark:text-slate-300">{o.requester || '-'}</div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-xs font-bold text-slate-700 dark:text-slate-300">{o.vendor || '-'}</div>
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex flex-wrap gap-1">
@@ -651,11 +726,11 @@ export const Reports: React.FC<ReportsProps> = ({ orders = [] }) => {
       if (!orderDate) return false;
       if (fromDate && orderDate < fromDate) return false;
       if (toDate && orderDate > toDate) return false;
-      if (plateFilter && order.plate !== plateFilter) return false;
-      if (costCenterFilter && order.costCenter !== costCenterFilter) return false;
-      if (vendorFilter && order.vendor !== vendorFilter) return false;
-      if (requesterFilter && (order.requester || '') !== requesterFilter) return false;
-      if (buyerFilter && getBuyerFromApprovalHistory(order) !== buyerFilter) return false;
+      if (!matchesMultiFilter(order.plate, plateFilter)) return false;
+      if (!matchesMultiFilter(order.costCenter, costCenterFilter)) return false;
+      if (!matchesMultiFilter(order.vendor, vendorFilter)) return false;
+      if (!matchesMultiFilter(order.requester || '', requesterFilter)) return false;
+      if (!matchesMultiFilter(getBuyerFromApprovalHistory(order), buyerFilter)) return false;
       return true;
     });
   }, [orders, dateFromFilter, dateToFilter, plateFilter, costCenterFilter, vendorFilter, requesterFilter, buyerFilter]);
@@ -804,12 +879,17 @@ export const Reports: React.FC<ReportsProps> = ({ orders = [] }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
         <input type="date" value={dateFromFilter} onChange={(e) => setDateFromFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm" title="Data inicial do pedido" />
         <input type="date" value={dateToFilter} onChange={(e) => setDateToFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm" title="Data final do pedido" />
-        <select value={plateFilter} onChange={(e) => setPlateFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm"><option value="">Todas as placas</option>{filterOptions.plates.map((value) => <option key={value} value={value}>{value}</option>)}</select>
-        <select value={costCenterFilter} onChange={(e) => setCostCenterFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm"><option value="">Todos os centros de custo</option>{filterOptions.costCenters.map((value) => <option key={value} value={value}>{value}</option>)}</select>
-        <select value={vendorFilter} onChange={(e) => setVendorFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm"><option value="">Todos os fornecedores</option>{filterOptions.vendors.map((value) => <option key={value} value={value}>{value}</option>)}</select>
-        <select value={requesterFilter} onChange={(e) => setRequesterFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm"><option value="">Todos os solicitantes</option>{filterOptions.requesters.map((value) => <option key={value} value={value}>{value}</option>)}</select>
-        <select value={buyerFilter} onChange={(e) => setBuyerFilter(e.target.value)} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm"><option value="">Todos os compradores</option>{filterOptions.buyers.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+        <input type="text" value={plateFilter} onChange={(e) => setPlateFilter(e.target.value)} list="report-plate-options" placeholder="Placas (ex: ABC1234, XYZ9876)" title={MULTI_FILTER_HINT} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm" />
+        <input type="text" value={costCenterFilter} onChange={(e) => setCostCenterFilter(e.target.value)} list="report-cost-center-options" placeholder="Centros de custo" title={MULTI_FILTER_HINT} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm" />
+        <input type="text" value={vendorFilter} onChange={(e) => setVendorFilter(e.target.value)} list="report-vendor-options" placeholder="Fornecedores" title={MULTI_FILTER_HINT} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm" />
+        <input type="text" value={requesterFilter} onChange={(e) => setRequesterFilter(e.target.value)} list="report-requester-options" placeholder="Solicitantes" title={MULTI_FILTER_HINT} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm" />
+        <input type="text" value={buyerFilter} onChange={(e) => setBuyerFilter(e.target.value)} list="report-buyer-options" placeholder="Compradores" title={MULTI_FILTER_HINT} className="px-3 py-2 bg-white dark:bg-[#1a222c] border border-gray-200 dark:border-gray-700 rounded-lg text-sm" />
       </div>
+      <datalist id="report-plate-options">{filterOptions.plates.map((value) => <option key={value} value={value} />)}</datalist>
+      <datalist id="report-cost-center-options">{filterOptions.costCenters.map((value) => <option key={value} value={value} />)}</datalist>
+      <datalist id="report-vendor-options">{filterOptions.vendors.map((value) => <option key={value} value={value} />)}</datalist>
+      <datalist id="report-requester-options">{filterOptions.requesters.map((value) => <option key={value} value={value} />)}</datalist>
+      <datalist id="report-buyer-options">{filterOptions.buyers.map((value) => <option key={value} value={value} />)}</datalist>
 
       <div className="bg-white dark:bg-[#1a222c] rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
